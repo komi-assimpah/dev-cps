@@ -4,7 +4,6 @@ Générateur de niveau de CO2.
 
 import random
 
-# Constantes CO2
 OUTDOOR_CO2_PPM = 420
 DEADLY_CO2_PPM = 1500
 MIN_CO2_PPM = 400
