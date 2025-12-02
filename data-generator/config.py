@@ -5,6 +5,7 @@ Structure :
 - Étage 1 : APT_101 (Nord), APT_102 (Est), APT_103 (Sud), APT_104 (Ouest)
 - Étage 2 : APT_201 (Nord), APT_202 (Est), APT_203 (Sud), APT_204 (Ouest)
 """
+#TODO: IDEE ->representer les apparts sous forme de tableau 2D avec l'emplacement des capteurs, murs... pour mieux piloter les modif des conditions avec un yaml
 
 APARTMENTS = {
     # =================== ÉTAGE 1 ===================
@@ -62,7 +63,7 @@ APARTMENTS = {
         "temp_offset": +0.8,
         "heat_loss_factor": 1.0,
         "user": {
-            "name": "Julie Étudiante",
+            "name": "Julie Student",
             "schedule": {"wake_up": 9, "leave_home": 10, "come_back": 18, "sleep_time": 1},
             "work_days": [0, 1, 2, 3],
             "temp_preference": 22.0,

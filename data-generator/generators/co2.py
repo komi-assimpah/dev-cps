@@ -4,6 +4,12 @@ Générateur de niveau de CO2.
 
 import random
 
+# Constantes CO2
+OUTDOOR_CO2_PPM = 420
+DEADLY_CO2_PPM = 1500
+MIN_CO2_PPM = 400
+MAX_CO2_PPM = 2500
+
 
 def update_co2(
     current_co2: float,
@@ -37,7 +43,6 @@ def update_co2(
         co2_increase = random.uniform(5, 12)
         
         # === ACTIVITÉS SELON L'HEURE ET LA PIÈCE ===
-        
         # Nuit (23h-7h) : accumulation chambres
         if hour >= 23 or hour < 7:
             if "chambre" in room_name or room_name == "studio":
@@ -71,14 +76,13 @@ def update_co2(
     
     new_co2 = current_co2 + co2_increase
     
-    # Aération
     if window_open:
         new_co2 -= random.uniform(40, 80)
     
-    # Tendance vers extérieur (420 ppm)
-    new_co2 += (420 - new_co2) * 0.02
+    # Tendance vers extérieur
+    new_co2 += (OUTDOOR_CO2_PPM - new_co2) * 0.02
     
     # Bornes
-    new_co2 = max(400, min(2500, new_co2))
+    new_co2 = max(MIN_CO2_PPM, min(MAX_CO2_PPM, new_co2))
     
     return round(new_co2, 0)

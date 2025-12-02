@@ -5,7 +5,7 @@ Générateur d'état des fenêtres.
 import random
 
 
-def update_window(current_open: bool, presence: bool, co2: float, hour: int) -> bool:
+def window_is_opened(current_open: bool, presence: bool, co2: float, hour: int) -> bool:
     """
     Décide si une fenêtre est ouverte ou fermée.
     
@@ -35,7 +35,7 @@ def update_window(current_open: bool, presence: bool, co2: float, hour: int) -> 
         return True
     
     # Aération matinale
-    if 8 <= hour <= 10 and random.random() < 0.15:
+    if 8 <= hour <= 10 and random.random() < 0.8:
         return True
     
     return False

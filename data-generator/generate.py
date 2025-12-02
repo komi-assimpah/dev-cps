@@ -17,7 +17,7 @@ from config import APARTMENTS, WEATHER
 from generators import (
     generate_weather_for_day,
     is_user_home,
-    update_window,
+    window_is_opened,
     update_temperature,
     update_co2,
     update_humidity,
@@ -30,11 +30,10 @@ def generate_room_data(
     weather: List[dict],
     date: datetime
 ) -> List[dict]:
-    """Génère les données pour UNE pièce sur une journée."""
+    """Génère les données pour UNE pièce sur UNE journée."""
     data = []
     day_of_week = date.weekday()
     
-    # Config
     user = apt_config["user"]
     temp_pref = user["temp_preference"]
     temp_offset = apt_config["temp_offset"]
@@ -42,7 +41,6 @@ def generate_room_data(
     orientation = apt_config["orientation"]
     has_co2 = room_name in apt_config["rooms_with_co2"]
     
-    # État initial
     current_temp = temp_pref - 1.5 + temp_offset
     current_co2 = 550.0
     current_humidity = 50.0
@@ -53,11 +51,12 @@ def generate_room_data(
         minute = w["minute"]
         temp_ext = w["temp_ext"]
         humidity_ext = w["humidity_ext"]
+        
         timestamp = date.replace(hour=hour, minute=minute, second=0)
         
         presence = is_user_home(hour, minute, day_of_week, user)
         
-        window_open = update_window(window_open, presence, current_co2, hour)
+        window_open = window_is_opened(window_open, presence, current_co2, hour)
         
         current_temp = update_temperature(
             current_temp, temp_ext, window_open, presence,
@@ -151,10 +150,10 @@ def main():
     print("GÉNÉRATION DES DONNÉES CAPTEURS")
     print("=" * 50)
     print(f"Jours : {args.days}")
-    print(f"Appartements : {len(apartments)}")
+    print(f"Nb Appartements : {len(apartments)}")
     print("=" * 50)
     
-    start_date = datetime(2025, 1, 13)  # Un lundi
+    start_date = datetime(2025, 12, 1)  # Un lundi
     
     for day in range(args.days):
         current_date = start_date + timedelta(days=day)

@@ -25,7 +25,6 @@ def is_user_home(hour: int, minute: int, day_of_week: int, user_config: dict) ->
     
     # Jour non travaillé
     if day_of_week not in work_days:
-        # Majoritairement à la maison, sauf sorties aléatoires
         if 10 <= hour <= 16 and random.random() < 0.2:
             return False
         return True

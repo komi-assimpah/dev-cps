@@ -49,3 +49,43 @@ def generate_weather_for_day(date: datetime, config: dict) -> List[dict]:
             })
     
     return weather
+
+
+def get_external_pm25(hour: int) -> float:
+    """
+    Génère un niveau de PM2.5 extérieur réaliste pour environnement urbain.
+    
+    Pattern typique urbain :
+    - Pic matin (7h-9h) : trafic routier
+    - Creux après-midi (14h-16h) : dispersion atmosphérique
+    - Pic soir (18h-20h) : trafic + chauffage domestique
+    - Bas la nuit : peu d'activité
+    
+    Args:
+        hour: Heure actuelle (0-23)
+    
+    Returns:
+        Niveau PM2.5 extérieur (µg/m³)
+    """
+    base = 25  # OUTDOOR_PM25_URBAN
+    
+    # Pic matin (trafic)
+    if 7 <= hour < 9:
+        base += random.uniform(5, 15)
+    
+    # Pic soir (trafic + chauffage domestique)
+    elif 18 <= hour < 21:
+        base += random.uniform(10, 20)
+    
+    # Creux après-midi
+    elif 14 <= hour < 17:
+        base -= random.uniform(5, 10)
+    
+    # Nuit : faible activité
+    elif 23 <= hour or hour < 6:
+        base -= random.uniform(5, 10)
+    
+    weather_factor = random.uniform(-5, 5)
+    
+    result = base + weather_factor
+    return max(5, min(100, result))
