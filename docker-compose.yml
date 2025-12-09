@@ -1,191 +1,56 @@
-# ====================================================================
-# DOCKER COMPOSE - Environnement de développement avec Kafka
-# ====================================================================
-# Ce fichier configure 3 services :
-# 1. MongoDB : Base de données NoSQL pour stocker des données
-# 2. Kafka : Plateforme de streaming de messages en temps réel
-# 3. Kafka-UI : Interface web pour visualiser et gérer Kafka
-# ====================================================================
-#
-# 📚 CONCEPTS IMPORTANTS POUR DÉBUTANTS
-# ====================================================================
-#
-# 🌐 QU'EST-CE QU'UN CLUSTER ?
-# ─────────────────────────────
-# Un CLUSTER = groupe de plusieurs serveurs qui travaillent ensemble.
-#
-# Votre configuration actuelle (développement) :
-#     ┌─────────────────┐
-#     │  Kafka Broker 1 │  ← 1 seul serveur (suffit pour apprendre)
-#     │  (Node ID: 1)   │
-#     └─────────────────┘
-#
-# Configuration production (3 brokers en cluster) :
-#     ┌─────────┐   ┌─────────┐   ┌─────────┐
-#     │ Broker1 │   │ Broker2 │   │ Broker3 │
-#     └────┬────┘   └────┬────┘   └────┬────┘
-#          └────────────┬─────────────┘
-#              Cluster Kafka
-#
-# Avantages du cluster :
-#   ✓ Haute disponibilité (si 1 tombe, les autres continuent)
-#   ✓ Performance (charge répartie)
-#   ✓ Résilience (données répliquées)
-#
-# 🐘 QU'EST-CE QUE ZOOKEEPER ?
-# ─────────────────────────────
-# Zookeeper était l'ANCIEN système de coordination de Kafka.
-# Il jouait le rôle de "chef d'orchestre".
-#
-# Ancienne architecture (avec Zookeeper) :
-#     ┌─────────────┐
-#     │  Zookeeper  │ ← Coordinateur externe
-#     │   :2181     │
-#     └──────┬──────┘
-#            │
-#       ┌────┴────┐
-#       ↓         ↓
-#    ┌─────┐  ┌─────┐
-#    │Kafka│  │Kafka│ ← Brokers
-#    │  1  │  │  2  │
-#    └─────┘  └─────┘
-#
-# Nouvelle architecture KRaft (votre config) :
-#     ┌─────────────────────┐
-#     │  Kafka avec KRaft   │ ← Tout en un !
-#     │  (broker +          │
-#     │   controller)       │
-#     │                     │
-#     │ :9092 → Messages    │
-#     │ :9093 → Coordination│
-#     └─────────────────────┘
-#
-# Pourquoi KRaft remplace Zookeeper ?
-#   ✓ Plus simple (1 service au lieu de 2)
-#   ✓ Plus rapide (pas de communication externe)
-#   ✓ Meilleure scalabilité
-#   ✓ Architecture du futur (Zookeeper sera supprimé dans Kafka 4.0)
-#
-# Le port 9093 est le CONTROLLER qui remplace Zookeeper.
-# Les brokers Kafka s'auto-coordonnent via ce port.
-#
-# ====================================================================
-
 services:
-  # ===========================
-  # SERVICE 1 : MongoDB
-  # ===========================
-  # MongoDB est une base de données NoSQL orientée documents
-  # Utilisée pour stocker des données de manière flexible
   mongodb:
-    image: mongo:7.0                    # Version stable de MongoDB
+    image: mongo:7.0
     container_name: mongodb_edge
     ports:
-      - "27017:27017"                   # Port standard MongoDB (host:container)
+      - "27017:27017"
     volumes:
-      - mongodb-data:/data/db           # Persiste les données sur le disque
+      - mongodb-data:/data/db
     networks:
-      - dev-cps-network                 # Réseau partagé entre tous les services
+      - dev-cps-network
 
-  # ===========================
-  # SERVICE 2 : Kafka (avec KRaft)
-  # ===========================
-  # Apache Kafka : Plateforme de streaming distribué
-  # Permet de publier, stocker et traiter des flux de messages en temps réel
-  #
-  # Cas d'usage :
-  # - Messaging entre microservices
-  # - Collecte de logs et métriques
-  # - Event sourcing et CQRS
-  # - Traitement de flux de données en temps réel (IoT, analytics)
-  #
-  # KRaft Mode : Kafka sans Zookeeper (architecture moderne depuis Kafka 3.3)
+  # KAFKA - Broker unique avec KRaft
   kafka:
     image: confluentinc/cp-kafka:7.5.0  
     container_name: kafka_broker
     ports:
-      - "9092:9092"                     # Port CLIENT : pour se connecter depuis votre machine
-      - "9093:9093"                     # Port CONTROLLER : coordination interne (remplace Zookeeper)
+      - "9092:9092"                     # Port CLIENT : connexion depuis votre machine
+      - "9093:9093"                     # Port CONTROLLER : coordination KRaft interne
 
     environment:
-      # --- Configuration de base ---
-      KAFKA_NODE_ID: 1                  # ID unique de ce broker (important en cluster multi-nœuds)
-
-      # --- Mode KRaft (sans Zookeeper) ---
-      KAFKA_PROCESS_ROLES: broker,ycontroller
-      # "broker" = stocke et distribue les messages
-      # "controller" = gère la coordination du cluster (remplace Zookeeper)
-      # Ce nœud fait les deux rôles en même temps
-
-      # --- Configuration des listeners (endpoints de connexion) ---
+      KAFKA_NODE_ID: 1
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://kafka:9093
-      # PLAINTEXT://kafka:29092    → Pour communication ENTRE conteneurs Docker
-      # PLAINTEXT_HOST://:9092     → Pour connexion depuis votre MACHINE (localhost)
-      # CONTROLLER://kafka:9093    → Pour coordination interne KRaft
-
+      # PLAINTEXT://kafka:29092    → Communication inter-conteneurs Docker (kafka-ui, etc.)
+      # PLAINTEXT_HOST://:9092     → Connexion depuis votre machine (localhost:9092)
+      # CONTROLLER://kafka:9093    → Coordination KRaft interne
+      
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      # Adresses que Kafka communique aux clients
-      # - kafka:29092 → utilisée par kafka-ui (même réseau Docker)
-      # - localhost:9092 → utilisée par votre code Python/Java/etc.
-
-      # --- Mapping des protocoles de sécurité ---
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      # PLAINTEXT = pas de chiffrement (OK pour développement local)
-      # En production, utilisez SSL/SASL #TODO: passer en données chiffrées ASAP pour voir la différence
-
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      # Nom du listener utilisé pour la coordination KRaft
-
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      # Liste des nœuds qui votent pour élire un controller leader
-      # Format: NODE_ID@HOST:PORT
-      # Pour un cluster : 1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
-      #
-      # 💡 EXPLICATION : Élection du leader
-      # Dans un cluster, les brokers votent entre eux pour élire un "controller leader"
-      # qui coordonne le cluster (comme un chef d'équipe élu par ses pairs).
-      # Ici : 1@kafka:9093 = seul votant (car 1 seul broker)
-      # En production avec 3 brokers, tous votent pour élire le leader.
-
+      
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093      
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      # Listener utilisé pour la communication entre brokers (si cluster multi-nœuds)
-
-      # --- Facteurs de réplication ---
+      
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      # Nombre de copies des offsets de consommateurs (1 = pas de réplication)
-      # En production : 3 recommandé
-
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      # Minimum In-Sync Replicas pour les transactions (1 = pas de contrainte)
-
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      # Réplication du log de transactions (1 = pas de réplication)
-
-      # --- Options pratiques ---
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      # Crée automatiquement un topic quand on y envoie un message
-      # Pratique pour débuter, désactiver en production #TODO: à tester pour voir l'impact
-
-      # --- Rétention des messages ---
-      KAFKA_LOG_RETENTION_HOURS: 168
-      # Durée de conservation des messages : 168h = 7 jours #TODO: à justifier
-      # Après ce délai, les messages sont automatiquement supprimés
-
-      KAFKA_LOG_SEGMENT_BYTES: 1073741824
-      # Taille max d'un fichier de log : 1 GB #TODO: à justifier en fonction des données que l'on traite
-      # Kafka découpe les logs en segments de cette taille
-
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true" # Pratique pour le développement, à désactiver en production
+      KAFKA_LOG_RETENTION_HOURS: 168 # 7 jours 
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824 # 1 GB
+      
       KAFKA_LOG_DIRS: /var/lib/kafka/data
-      # Répertoire de stockage des messages et métadonnées
-
 
     volumes:
-      - kafka-data:/var/lib/kafka/data  # Persiste les messages et métadonnées
+      - kafka-data:/var/lib/kafka/data
 
     networks:
       - dev-cps-network
 
-    # Vérifie que Kafka est vraiment prêt (pas juste démarré)
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 10s
@@ -193,103 +58,26 @@ services:
       retries: 5
       start_period: 40s
 
-  # ===========================
-  # SERVICE 3 : Kafka-UI
-  # ===========================
-  # Interface web pour visualiser et gérer Kafka facilement
-  # Fonctionnalités :
-  # - Voir les topics et leurs messages
-  # - Créer/supprimer des topics
-  # - Voir les consommateurs actifs
-  # - Monitorer les performances
-  #
-  # 💡 POURQUOI kafka:29092 et pas localhost:9092 ?
-  # Kafka-UI tourne dans un conteneur Docker, sur le même réseau que Kafka.
-  # Il utilise donc le nom de service "kafka" pour communiquer (réseau interne).
-  # Votre code Python/Java sur votre machine utilisera "localhost:9092".
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     depends_on:
-      - kafka                           # Attend que Kafka soit démarré
+      - kafka
     ports:
-      - "8080:8080"                     # Interface web accessible sur http://localhost:8080
+      - "8080:8080"
     environment:
-      KAFKA_CLUSTERS_0_NAME: local      # Nom d'affichage du cluster dans l'interface
+      KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      # Adresse du broker Kafka (utilise kafka:29092 = réseau Docker interne)
     networks:
       - dev-cps-network
 
-# ===========================
-# VOLUMES
-# ===========================
-# Volumes Docker pour persister les données même après "docker compose down"
-#
-# 💡 PERSISTANCE DES DONNÉES
-# Sans volumes : les données sont perdues à chaque "docker compose down"
-# Avec volumes : les données persistent sur votre disque dur
-#
-# Pour Kafka : stocke les messages et métadonnées
-# Avec Zookeeper, il fallait aussi un volume pour Zookeeper (zookeeper-data)
-# Avec KRaft, seul kafka-data est nécessaire (tout est dans Kafka)
-volumes:
-  mongodb-data:                         # Données MongoDB
-  kafka-data:                           # Messages et métadonnées Kafka (mode KRaft)
 
-# ===========================
-# RÉSEAUX
-# ===========================
-# Réseau bridge permettant la communication entre conteneurs
-#
-# 💡 RÉSEAU DOCKER
-# Tous les services sont sur le même réseau "dev-cps-network"
-# Cela permet la communication par nom de service :
-#   - kafka-ui peut contacter Kafka via "kafka:29092"
-#   - Vos applications peuvent contacter MongoDB via "mongodb:27017"
-#
-# Depuis votre machine (hors Docker), utilisez "localhost" :
-#   - Kafka : localhost:9092
-#   - MongoDB : localhost:27017
-#   - Kafka-UI : localhost:8080
+volumes:
+  mongodb-data:
+  kafka-data:
+
+
 networks:
   dev-cps-network:
     driver: bridge
 
-# ====================================================================
-# 🚀 DÉMARRAGE RAPIDE
-# ====================================================================
-#
-# 1. Lancer l'environnement :
-#    docker compose up -d
-#
-# 2. Vérifier que tout tourne :
-#    docker compose ps
-#
-# 3. Voir les logs Kafka :
-#    docker compose logs -f kafka
-#
-# 4. Accéder à l'interface web :
-#    http://localhost:8080
-#
-# 5. Se connecter à Kafka depuis votre code :
-#    bootstrap_servers = 'localhost:9092'
-#
-# 6. Arrêter l'environnement :
-#    docker compose down
-#
-# 7. Arrêter ET supprimer les données :
-#    docker compose down -v
-#
-# ====================================================================
-# 📚 POUR EN SAVOIR PLUS
-# ====================================================================
-#
-# Consultez le fichier KAFKA_GUIDE.md pour :
-#   - Comprendre les concepts Kafka (Topic, Producer, Consumer, etc.)
-#   - Exemples de code Python et JavaScript
-#   - Commandes CLI utiles
-#   - Cas d'usage et bonnes pratiques
-#   - Dépannage et FAQ
-#
-# ====================================================================
