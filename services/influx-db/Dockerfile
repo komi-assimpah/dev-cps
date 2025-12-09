@@ -27,6 +27,8 @@ ENV KAFKA_BOOTSTRAP="kafka:29092" \
     INFLUX_TOKEN_FILE="/run/secrets/influxdb2-admin-token" \
     START_FROM_BEGINNING="true" \
     AUTO_COMMIT="false" \
+    COMMIT_EACH_MESSAGE="false" \
+    COMMIT_INTERVAL="1" \
     ALLOW_MISSING_TOPICS="true" \
     VERBOSE="false"
 

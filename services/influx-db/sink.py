@@ -52,11 +52,15 @@ def parse_value(value: bytes) -> Any:
 
 
 def build_points(topic: str, payload: Any, headers: Dict[str, str], ts_ms: int) -> List[Point]:
-    # measurement: topic name
-    # tags: headers (string values only)
-    # fields: if payload is dict, numeric/bool fields; else 'value' field as string
+    # Measurement: derived from header 'type' if present, else topic
+    # Tags: apartment (topic), plus all headers (string values only)
+    # Fields: if payload is dict, numeric/bool/string fields; else 'value' field as string
     t_ns = int(ts_ms) * 1_000_000 if ts_ms is not None else None
-    p = Point(topic)
+    measurement = headers.get("type", topic)
+    p = Point(measurement)
+    # tag apartment/topic
+    if topic:
+        p = p.tag("apartment", topic)
     # tags from headers (limit size)
     for k, v in headers.items():
         if isinstance(v, str) and len(v) <= 256:  # basic guard
@@ -126,8 +130,6 @@ def wait_for_kafka(consumer: Consumer, retries: int = 60, delay_sec: float = 1.0
 def main():
     bootstrap = get_env("KAFKA_BOOTSTRAP", "kafka:29092")
     group_id = get_env("KAFKA_GROUP_ID", "influx-sink")
-    topics_env = get_env("TOPICS", "TemperatureReadings,CO2")
-    topics = [t.strip() for t in topics_env.split(",") if t.strip()]
 
     influx_url = get_env("INFLUX_URL", "http://influxdb2:8086")
     influx_org = get_env("INFLUX_ORG", "dev")
@@ -137,6 +139,8 @@ def main():
 
     start_from_beginning = env_bool("START_FROM_BEGINNING", True)
     auto_commit = env_bool("AUTO_COMMIT", False)
+    commit_each = env_bool("COMMIT_EACH_MESSAGE", False)
+    commit_interval = int(os.getenv("COMMIT_INTERVAL", "1"))
     verbose = env_bool("VERBOSE", False)
 
     consumer = create_consumer(bootstrap, group_id, auto_commit, start_from_beginning)
@@ -148,18 +152,13 @@ def main():
     except Exception:
         cluster_topics = set()
 
-    allow_missing = env_bool("ALLOW_MISSING_TOPICS", True)
-    subscribe_topics = topics
-    missing = [t for t in topics if t not in cluster_topics]
-    if missing and allow_missing and cluster_topics:
-        existing = [t for t in topics if t in cluster_topics]
-        if existing:
-            print(f"Some topics missing and will be skipped for now: {missing}. Subscribing to existing: {existing}")
-            subscribe_topics = existing
-        else:
-            print(f"All requested topics missing: {missing}. Subscribing anyway; will rely on broker to create later.")
-
-    consumer.subscribe(subscribe_topics)
+    # Discover topics dynamically: subscribe to all currently known topics
+    subscribe_topics = sorted(cluster_topics) if cluster_topics else []
+    if not subscribe_topics:
+        print("No topics discovered from Kafka metadata at startup; waiting for producers to create topics.")
+        consumer.subscribe([])
+    else:
+        consumer.subscribe(subscribe_topics)
 
     if start_from_beginning:
         seek_beginning_after_assignment(consumer)
@@ -167,11 +166,30 @@ def main():
     client = InfluxDBClient(url=influx_url, token=influx_token, org=influx_org)
     write_api = client.write_api(write_options=WriteOptions(batch_size=500, flush_interval=2000))
 
-    print(f"Influx sink started | topics={topics} | bucket={influx_bucket} org={influx_org} url={influx_url}")
+    print(f"Influx sink started | subscribed={subscribe_topics if subscribe_topics else 'ALL'} | bucket={influx_bucket} org={influx_org} url={influx_url}")
 
     processed = 0
+    # Periodic topic discovery and re-subscribe
+    last_refresh = time.time()
+    refresh_interval = int(os.getenv("TOPIC_REFRESH_SECONDS", "30"))
     try:
         while True:
+            # Refresh topic list periodically
+            if refresh_interval > 0 and (time.time() - last_refresh) >= refresh_interval:
+                try:
+                    md = consumer.list_topics(timeout=2.0)
+                    new_topics = sorted(list(md.topics.keys())) if md and md.topics else []
+                    if new_topics and new_topics != subscribe_topics:
+                        subscribe_topics = new_topics
+                        consumer.subscribe(subscribe_topics)
+                        if verbose:
+                            print(f"Updated subscription: {subscribe_topics}")
+                except Exception as e:
+                    if verbose:
+                        print(f"Topic refresh failed: {e}")
+                finally:
+                    last_refresh = time.time()
+
             msg = consumer.poll(1.0)
             if msg is None:
                 continue
@@ -205,6 +223,13 @@ def main():
                 processed += 1
                 if verbose and (processed % 100 == 0):
                     print(f"Wrote {processed} points to Influx")
+                # Manually commit if auto-commit is disabled and commit_each is enabled
+                if (not auto_commit) and commit_each and (processed % max(1, commit_interval) == 0):
+                    try:
+                        consumer.commit(message=msg, asynchronous=True)
+                    except Exception as ce:
+                        if verbose:
+                            print(f"Commit error: {ce}")
             except Exception as e:
                 print(f"Write failed for {msg.topic()}[{msg.partition()}]@{msg.offset()}: {e}")
 
