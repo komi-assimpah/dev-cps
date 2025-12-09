@@ -16,11 +16,17 @@ from typing import List
 from config import APARTMENTS, WEATHER
 from generators import (
     generate_weather_for_day,
+    get_external_pm25,
+    get_external_co,
+    get_external_tvoc,
     is_user_home,
     window_is_opened,
     update_temperature,
     update_co2,
     update_humidity,
+    update_pm25,
+    update_co,
+    update_tvoc,
 )
 
 
@@ -44,6 +50,9 @@ def generate_room_data(
     current_temp = temp_pref - 1.5 + temp_offset
     current_co2 = 550.0
     current_humidity = 50.0
+    current_pm25 = 15.0   # Niveau initial urbain (µg/m³)
+    current_co = 0.8      # Niveau initial faible (ppm)
+    current_tvoc = 250.0  # Niveau initial acceptable (µg/m³)
     window_open = False
     
     for w in weather:
@@ -66,8 +75,19 @@ def generate_room_data(
         if has_co2:
             current_co2 = update_co2(current_co2, presence, window_open, room_name, hour)
         
-        current_humidity = update_humidity(
-            current_humidity, humidity_ext, window_open, presence, room_name, hour
+        current_humidity = update_humidity(current_humidity, humidity_ext, window_open, presence, room_name, hour)
+        
+        external_pm25 = get_external_pm25(hour)
+        current_pm25 = update_pm25(current_pm25, external_pm25, window_open, presence, room_name, hour)
+        
+        external_co = get_external_co()
+        current_co = update_co(
+            current_co, external_co, window_open, presence, room_name, hour
+        )
+        
+        external_tvoc = get_external_tvoc()
+        current_tvoc = update_tvoc(
+            current_tvoc, external_tvoc, window_open, presence, room_name, hour
         )
         
         data.append({
@@ -76,6 +96,9 @@ def generate_room_data(
             "temperature": current_temp,
             "humidity": current_humidity,
             "co2": current_co2 if has_co2 else None,
+            "pm25": current_pm25,
+            "co": current_co,
+            "tvoc": current_tvoc,
             "window_open": window_open,
             "presence": presence,
             "temp_ext": temp_ext,
@@ -102,19 +125,18 @@ def save_csv(data: List[dict], filename: str):
     if not data:
         return
     
-    fields = ["timestamp", "apartment_id", "room", "temperature", "humidity",
-              "co2", "window_open", "presence", "temp_ext", "humidity_ext"]
+    fields = ["timestamp", "apartment_id", "room", "window_open", "presence", "temperature", "humidity",
+              "co2", "pm25", "co", "tvoc", "temp_ext", "humidity_ext"]
     
     with open(filename, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
         writer.writerows(data)
     
-    print(f"  ✅ {filename} ({len(data)} lignes)")
+    print(f"  ✅ {filename} generated: ({len(data)} lignes)")
 
 
 def save_weather_csv(weather: List[dict], date: datetime, filename: str):
-    """Sauvegarde la météo."""
     with open(filename, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["timestamp", "temperature", "humidity"])
         writer.writeheader()
@@ -159,7 +181,7 @@ def main():
         current_date = start_date + timedelta(days=day)
         date_str = current_date.strftime("%Y-%m-%d")
         
-        print(f"\n📅 {date_str} ({current_date.strftime('%A')})")
+        print(f"\n[{date_str}] ({current_date.strftime('%A')})")
         
         weather = generate_weather_for_day(current_date, WEATHER)
         save_weather_csv(weather, current_date, f"{args.output}/weather_{date_str}.csv")
