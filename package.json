@@ -1,0 +1,35 @@
+{
+  "name": "dev-cps",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev:resident": "npm run dev -w services/webapp/resident",
+    "build:resident": "npm run build -w services/webapp/resident",
+    "preview:resident": "npm run preview -w services/webapp/resident"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/komi-assimpah/dev-cps.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/komi-assimpah/dev-cps/issues"
+  },
+  "homepage": "https://github.com/komi-assimpah/dev-cps#readme",
+  "workspaces": [
+    "services/webapp/manager/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^25.0.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "vite": "^7.3.0"
+  }
+}

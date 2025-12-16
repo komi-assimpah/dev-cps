@@ -3,3 +3,6 @@ __pycache__/
 **/__pycache__/
 *.py[cod]
 *$py.class
+todo
+package-lock.json
+node_modules/
