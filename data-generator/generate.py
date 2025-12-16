@@ -5,6 +5,7 @@ Usage :
     python generate.py                      # 1 jour, tous les appartements
     python generate.py --days 7             # 1 semaine
     python generate.py --apartment APT_101  # Un seul appartement
+    python generate.py --days 1 --apartment APT_101
 """
 
 import csv
@@ -133,7 +134,7 @@ def save_csv(data: List[dict], filename: str):
         writer.writeheader()
         writer.writerows(data)
     
-    print(f"  ✅ {filename} generated: ({len(data)} lignes)")
+    print(f"  [OK] {filename} generated: ({len(data)} lignes)")
 
 
 def save_weather_csv(weather: List[dict], date: datetime, filename: str):
@@ -147,7 +148,7 @@ def save_weather_csv(weather: List[dict], date: datetime, filename: str):
                 "temperature": w["temp_ext"],
                 "humidity": w["humidity_ext"],
             })
-    print(f"  ✅ {filename} ({len(weather)} lignes)")
+    print(f"  [OK] {filename} ({len(weather)} lignes)")
 
 
 def main():
@@ -162,7 +163,7 @@ def main():
     # Sélectionner les appartements
     if args.apartment:
         if args.apartment not in APARTMENTS:
-            print(f"❌ Appartement inconnu : {args.apartment}")
+            print(f"[ERROR] Appartement inconnu : {args.apartment}")
             return
         apartments = {args.apartment: APARTMENTS[args.apartment]}
     else:
@@ -191,7 +192,7 @@ def main():
             save_csv(data, f"{args.output}/{apt_id.lower()}_{date_str}.csv")
     
     print("\n" + "=" * 50)
-    print("✅ Terminé !")
+    print("[OK] Terminé !")
 
 
 if __name__ == "__main__":
