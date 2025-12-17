@@ -5,8 +5,11 @@ Lit un CSV de données de capteurs et affiche une animation
 de la propagation thermique dans l'appartement.
 
 Usage:
-    python visualize_csv.py output/apt_101_2025-12-01.csv
-    python visualize_csv.py output/apt_101_2025-12-01.csv --speed 0.5
+    dans le terminal :
+      - python visualize_csv.py output/apt_101_2025-12-01.csv
+      - python visualize_csv.py output/apt_101_2025-12-01.csv --speed 0.5
+    pour les avoirs en png :
+      - python visualize_csv.py output/apt_101_2025-12-01.csv --export frames/
 """
 
 import csv
@@ -14,8 +17,26 @@ import sys
 import time
 import argparse
 from datetime import datetime
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib.colors import LinearSegmentedColormap
 from spatial.loader import FlatLoader
 from visualization.thermal_view import visualize_thermal_state
+
+
+def create_thermal_colormap():
+    """
+    palette de couleurs thermique (Cyan -> Jaune -> Orange -> Rouge)
+    """
+    colors = [
+        (0.0, (0.2, 0.8, 0.8)),  # Cyan (10°C)
+        (0.25, (0.9, 0.9, 0.2)), # Jaune (15°C)
+        (0.5, (1.0, 0.6, 0.0)),  # Orange (20°C)
+        (0.75, (1.0, 0.3, 0.0)), # Orange foncé (25°C)
+        (1.0, (0.8, 0.0, 0.0))   # Rouge (30°C)
+    ]
+    return LinearSegmentedColormap.from_list('thermal', [c[1] for c in colors])
 
 
 def load_csv_data(csv_path):
@@ -127,10 +148,34 @@ def main():
     parser.add_argument('csv_file', help='Chemin vers le fichier CSV')
     parser.add_argument('--speed', type=float, default=1.0, help='Vitesse de lecture (défaut: 1.0)')
     parser.add_argument('--apartment', default='APT_101', help='ID de l\'appartement (défaut: APT_101)')
+    parser.add_argument('--export', help='Exporter les frames en images PNG dans ce dossier')
     
     args = parser.parse_args()
     
-    visualize_csv(args.csv_file, args.apartment, args.speed)
+    if args.export: # sauvegarder chaque frame en PNG
+        from visualization.image_export import save_thermal_image
+        import os
+        
+        os.makedirs(args.export, exist_ok=True)
+        
+        data = load_csv_data(args.csv_file)
+        loader = FlatLoader()
+        flat = loader.load_flat(f'config/apartments/{args.apartment}')
+        grouped = group_by_timestamp(data)
+        
+        for idx, ts in enumerate(sorted(grouped.keys())):
+            room_temps = grouped[ts]
+            temp_ext = float([r for r in data if r['timestamp'] == ts][0]['temp_ext'])
+            apply_thermal_diffusion(flat, room_temps, temp_ext)
+            
+            # Format: APT_101_2025-12-01T00-00-00.png
+            ts_safe = ts.replace(':', '-')
+            output_path = os.path.join(args.export, f'{args.apartment}_{ts_safe}.png')
+            save_thermal_image(flat, output_path, cell_size=30, timestamp=ts, room_temps=room_temps)
+        
+        print(f"\n[OK] {idx+1} images exportées dans {args.export}/")
+    else:
+        visualize_csv(args.csv_file, args.apartment, args.speed)
 
 
 if __name__ == '__main__':

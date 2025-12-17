@@ -75,7 +75,7 @@ def print_thermal_map(flat, show_temps=False):
             elif cell.sensor == "SENSOR_IAQ": 
                 print('\033[48;5;21m I\033[0m', end='') # Capteur IAQ - fond bleu avec I
             elif cell.actuator: # Actionneur - fond vert avec H
-                print('\033[48;5;46m H\033[0m', end='')
+                print('\033[48;5;46m A\033[0m', end='')
             else:
                 print(color_square, end='')
         
