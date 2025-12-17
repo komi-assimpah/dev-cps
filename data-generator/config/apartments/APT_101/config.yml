@@ -1,0 +1,196 @@
+id: "APT_101"
+floor: 1
+orientation: "north"
+type: "T3"
+
+# Capteurs avec positions exactes dans la grille 20x20
+#TODO: Vérifier si tous les capteurs sont bien ajoutés
+sensors:
+  temp_salon:
+    type: "SENSOR_TEMP"
+    room: "salon"
+    pos_x: 9
+    pos_y: 14
+
+  temp_cuisine:
+    type: "SENSOR_TEMP"
+    room: "cuisine"
+    pos_x: 9
+    pos_y: 5
+
+  temp_chambre1:
+    type: "SENSOR_TEMP"
+    room: "chambre_1"
+    pos_x: 14
+    pos_y: 8
+
+  temp_chambre2:
+    type: "SENSOR_TEMP"
+    room: "chambre_2"
+    pos_x: 14
+    pos_y: 13
+
+  temp_sdb:
+    type: "SENSOR_TEMP"
+    room: "sdb"
+    pos_x: 15
+    pos_y: 11
+
+  iaq_salon:
+    type: "SENSOR_IAQ"
+    room: "salon"
+    pos_x: 9
+    pos_y: 13
+
+  iaq_cuisine:
+    type: "SENSOR_IAQ"
+    room: "cuisine"
+    pos_x: 9
+    pos_y: 4
+
+# Actionneurs (chauffage)
+actuators:
+  heater_cuisine:
+    type: "ACTUATOR_TEMP"
+    room: "cuisine"
+    pos_x: 7
+    pos_y: 2
+  heater_salon:
+    type: "ACTUATOR_TEMP"
+    room: "salon"
+    pos_x: 3
+    pos_y: 14
+  heater_chambre1:
+    type: "ACTUATOR_TEMP"
+    room: "chambre_1"
+    pos_x: 11
+    pos_y: 5
+  heater_chambre2:
+    type: "ACTUATOR_TEMP"
+    room: "chambre_2"
+    pos_x: 11
+    pos_y: 16
+
+outside:
+  # Bord haut (ligne 0)
+  - [0, 0]
+  - [1, 0]
+  - [2, 0]
+  - [3, 0]
+  - [4, 0]
+  - [5, 0]
+  - [6, 0]
+  - [7, 0]
+  - [8, 0]
+  - [9, 0]
+  - [10, 0]
+  - [11, 0]
+  - [12, 0]
+  - [13, 0]
+  - [14, 0]
+  - [15, 0]
+  - [16, 0]
+  - [17, 0]
+  - [18, 0]
+  - [19, 0]
+
+  # Bord gauche (colonne 0)
+  - [0, 1]
+  - [0, 2]
+  - [0, 3]
+  - [0, 4]
+  - [0, 5]
+  - [0, 6]
+  - [0, 7]
+  - [0, 8]
+  - [0, 9]
+  - [0, 10]
+  - [0, 11]
+  - [0, 12]
+  - [0, 13]
+  - [0, 14]
+  - [0, 15]
+  - [0, 16]
+  - [0, 17]
+  - [0, 18]
+  - [0, 19]
+  - [0, 20]
+
+  # Deuxième colonne (colonne 1)
+  - [1, 1]
+  - [1, 2]
+  - [1, 3]
+  - [1, 4]
+  - [1, 5]
+  - [1, 6]
+  - [1, 7]
+  - [1, 8]
+  - [1, 9]
+  - [1, 10]
+  - [1, 11]
+  - [1, 12]
+  - [1, 13]
+  - [1, 14]
+  - [1, 15]
+  - [1, 16]
+  - [1, 17]
+  - [1, 18]
+  - [1, 19]
+  - [1, 20]
+
+  # Bord droit (colonne 19)
+  - [19, 0]
+  - [19, 1]
+  - [19, 2]
+  - [19, 3]
+  - [19, 4]
+  - [19, 5]
+  - [19, 6]
+  - [19, 7]
+  - [19, 8]
+  - [19, 9]
+  - [19, 10]
+  - [19, 11]
+  - [19, 12]
+  - [19, 13]
+  - [19, 14]
+  - [19, 15]
+  - [19, 16]
+  - [19, 17]
+  - [19, 18]
+  - [19, 19]
+  - [19, 20]
+
+  # Bord bas (ligne 20)
+  - [2, 20]
+  - [3, 20]
+  - [4, 20]
+  - [5, 20]
+  - [6, 20]
+  - [7, 20]
+  - [8, 20]
+  - [9, 20]
+  - [10, 20]
+  - [11, 20]
+  - [12, 20]
+  - [13, 20]
+  - [14, 20]
+  - [15, 20]
+  - [16, 20]
+  - [17, 20]
+  - [18, 20]
+  - [19, 20]
+
+# Fenêtres
+windows:
+  - [13, 1]
+  - [14, 1]
+
+# Portes (ouvertures entre pièces à ne pas traverser par flood fill)
+doors:
+  # Porte salon-cuisine (ligne 6, colonne 10)
+  - [10, 6]
+  # Porte couloir-sdb (ligne 11, colonne 6)
+  - [6, 11]
+  # Porte entre pieces (ligne 12, colonne 10)
+  - [10, 12]
