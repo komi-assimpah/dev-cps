@@ -21,7 +21,7 @@ APARTMENTS = {
             "name": "Famille Martin",
             "schedule": {"wake_up": 7, "leave_home": 8, "come_back": 18, "sleep_time": 23},
             "work_days": [0, 1, 2, 3, 4],
-            "temp_preference": 21.0,
+            "temp_preference": 24.0,
         }
     },
     "APT_102": {

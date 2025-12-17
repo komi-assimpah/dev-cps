@@ -30,6 +30,12 @@ sensors:
     pos_x: 14
     pos_y: 13
 
+  temp_sdb:
+    type: "SENSOR_TEMP"
+    room: "sdb"
+    pos_x: 15
+    pos_y: 11
+
   iaq_salon:
     type: "SENSOR_IAQ"
     room: "salon"
@@ -179,3 +185,12 @@ outside:
 windows:
   - [13, 1]
   - [14, 1]
+
+# Portes (ouvertures entre pièces à ne pas traverser par flood fill)
+doors:
+  # Porte salon-cuisine (ligne 6, colonne 10)
+  - [10, 6]
+  # Porte couloir-sdb (ligne 11, colonne 6)
+  - [6, 11]
+  # Porte entre pieces (ligne 12, colonne 10)
+  - [10, 12]

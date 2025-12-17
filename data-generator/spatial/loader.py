@@ -39,5 +39,61 @@ class FlatLoader():
       cur_actuator = flat_actuators[actuator]
       flat[cur_actuator['pos_y']][cur_actuator['pos_x']].actuator = cur_actuator['type']
       flat[cur_actuator['pos_y']][cur_actuator['pos_x']].room = cur_actuator['room']
+    
+    # Assigner les pieces a TOUTES les cellules avec flood fill limite par distance
+    self._assign_rooms_limited_flood_fill(flat, flat_sensors, max_distance=8)
 
     return flat
+  
+  def _assign_rooms_limited_flood_fill(self, flat, sensors, max_distance=8):
+    """
+    Assigne automatiquement les pieces a toutes les cellules
+    en utilisant un flood fill LIMITE PAR DISTANCE depuis chaque capteur.
+    
+    Chaque capteur remplit seulement les cellules dans un rayon de max_distance.
+    S'arrete aux murs et fenetres.
+    """
+    for sensor_name, sensor_info in sensors.items():
+      room = sensor_info['room']
+      start_x = sensor_info['pos_x']
+      start_y = sensor_info['pos_y']
+      
+      # Flood fill avec distance
+      queue = [(start_y, start_x, 0)]  # (y, x, distance)
+      visited = set()
+      
+      while queue:
+        y, x, dist = queue.pop(0)
+        
+        if (y, x) in visited:
+          continue
+        
+        # Limiter la distance
+        if dist > max_distance:
+          continue
+        
+        # Verifier limites
+        if y < 0 or y >= len(flat) or x < 0 or x >= len(flat[0]):
+          continue
+        
+        cell = flat[y][x]
+        
+        # S'arreter aux murs et fenetres
+        if cell.is_wall or cell.is_window:
+          continue
+        
+        # IMPORTANT: Ne JAMAIS ecraser une cellule qui a un capteur
+        if cell.sensor and cell.room and cell.room != room:
+          continue
+        
+        # Ne pas ecraser une piece deja assignee par un autre capteur
+        if cell.room is not None and cell.room != room:
+          continue
+        
+        # Assigner la piece
+        cell.room = room
+        visited.add((y, x))
+        
+        # Ajouter les 4 voisins avec distance+1
+        for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+          queue.append((y + dy, x + dx, dist + 1))
