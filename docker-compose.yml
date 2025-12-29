@@ -71,10 +71,39 @@ services:
     networks:
       - dev-cps-network
 
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: mon-timescale
+    restart: always
+    environment:
+      POSTGRES_USER: monuser
+      POSTGRES_PASSWORD: monpassword
+      POSTGRES_DB: sensor_scores
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mon-grafana
+    restart: always
+    ports:
+      - "3000:3000"  # Accès via localhost:3000
+    depends_on:
+      - timescaledb  # Attend que la DB soit lancée
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana_json_exports:/var/lib/grafana/dashboards
 
 volumes:
   mongodb-data:
   kafka-data:
+  timescale_data:
+  grafana_data:
 
 
 networks:

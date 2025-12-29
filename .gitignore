@@ -7,3 +7,14 @@ __pycache__/
 dev_iot_omlette/
 
 */output/*
+
+# Ignorer les données systèmes
+.DS_Store
+Thumbs.db
+
+# Ignorer les volumes de données Docker (s'ils sont montés localement)
+pgdata/
+grafana_data/
+
+# Si tu as un fichier .env avec des mots de passe
+.env

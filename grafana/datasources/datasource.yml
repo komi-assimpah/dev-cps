@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: TimescaleDB
+    type: postgres
+    access: proxy
+    url: timescaledb:5432       # Le nom du service Docker
+    user: monuser
+    password: monpassword
+    database: sensor_scores
+    jsonData:
+      sslmode: "disable"        # Important en local
+      timescaledb: true         # Active les optimisations Timescale
+    isDefault: true
+    editable: true              # Permet de modifier la config dans l'UI si besoin
