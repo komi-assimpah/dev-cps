@@ -30,6 +30,7 @@ from generators import (
     update_tvoc,
 )
 
+#TODO: add energy consumption generation temperature dependent
 
 def generate_room_data(
     room_name: str,

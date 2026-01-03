@@ -134,6 +134,7 @@ APARTMENTS = {
 }
 
 # Météo de base (Nice, hiver)
+#TODO: retrieve a real weather dataset in csv file
 WEATHER = {
     "temp_min": 6.0,
     "temp_max": 14.0,
