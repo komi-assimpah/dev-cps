@@ -20,6 +20,7 @@
   "graphTooltip": 0,
   "id": 1,
   "links": [],
+  "liveNow": true,
   "panels": [
     {
       "datasource": {
@@ -29,7 +30,169 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "continuous-GrYlRd"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 3,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "max": 5,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "right",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "dataset": "sensor_scores",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_TIMESCALEDB}"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "hide": false,
+          "rawQuery": true,
+          "rawSql": "SELECT iaq_2h, \"time\" FROM scores WHERE appart_id = 1",
+          "refId": "B",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [
+                  {
+                    "name": "iaq_2h",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              },
+              {
+                "parameters": [
+                  {
+                    "name": "\"time\"",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50,
+            "whereJsonTree": {
+              "children1": [
+                {
+                  "id": "baaa8899-cdef-4012-b456-719b94b81ff9",
+                  "properties": {
+                    "field": "appart_id",
+                    "fieldSrc": "field",
+                    "operator": "equal",
+                    "value": [
+                      1
+                    ],
+                    "valueError": [
+                      null
+                    ],
+                    "valueSrc": [
+                      "value"
+                    ],
+                    "valueType": [
+                      "number"
+                    ]
+                  },
+                  "type": "rule"
+                }
+              ],
+              "id": "9bb888a9-0123-4456-b89a-b19b94a778b4",
+              "type": "group"
+            },
+            "whereString": "appart_id = 1"
+          },
+          "table": "scores"
+        }
+      ],
+      "title": "Appartement 01 - Qualité de l'air - Semaine Dernière",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "P40AE60E18F02DE32"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd"
           },
           "custom": {
             "axisPlacement": "auto",
@@ -43,46 +206,78 @@
             "lineWidth": 0,
             "spanNulls": false
           },
+          "fieldMinMax": false,
           "mappings": [],
+          "max": 5,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "dark-red",
+                "color": "#02a314",
                 "value": 0
               },
               {
-                "color": "#E24D42",
-                "value": 20
+                "color": "#03b25f",
+                "value": 0.5
               },
               {
-                "color": "#EF843C",
-                "value": 40
+                "color": "#04c1aa",
+                "value": 1
               },
               {
-                "color": "yellow",
-                "value": 60
+                "color": "#05cff2",
+                "value": 1.5
               },
               {
-                "color": "green",
-                "value": 80
+                "color": "#59c4a0",
+                "value": 2
               },
               {
-                "color": "dark-green",
-                "value": 100
+                "color": "#abb951",
+                "value": 2.5
+              },
+              {
+                "color": "#ffae00",
+                "value": 3
+              },
+              {
+                "color": "#f97700",
+                "value": 3.5
+              },
+              {
+                "color": "#f33c00",
+                "value": 4
+              },
+              {
+                "color": "dark-red",
+                "value": 5
               }
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dddd"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
+        "x": 12,
         "y": 0
       },
-      "id": 2,
+      "id": 4,
       "options": {
         "alignValue": "left",
         "legend": {
@@ -93,6 +288,208 @@
         "mergeValues": true,
         "rowHeight": 0.9,
         "showValue": "never",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "dataset": "sensor_scores",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "P40AE60E18F02DE32"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "hide": false,
+          "rawQuery": true,
+          "rawSql": "SELECT\r\n  \"time\" + interval '21 days' AS \"time\", \r\n  iaq_2h AS \"3 Semaines Avant\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN \r\n    ($__timeTo()::timestamp - interval '28 days') \r\n    AND \r\n    ($__timeTo()::timestamp - interval '21 days')\r\n  AND appart_id = 1\r\nORDER BY 1",
+          "refId": "Semaine encore encore avant",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        },
+        {
+          "dataset": "sensor_scores",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "P40AE60E18F02DE32"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "hide": false,
+          "rawQuery": true,
+          "rawSql": "SELECT\r\n  \"time\" + interval '14 days' AS \"time\", \r\n  iaq_2h AS \"2 Semaines Avant\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN \r\n    ($__timeTo()::timestamp - interval '21 days') \r\n    AND \r\n    ($__timeTo()::timestamp - interval '14 days')\r\n  AND appart_id = 1\r\nORDER BY 1",
+          "refId": "Semaine encore avant",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        },
+        {
+          "dataset": "sensor_scores",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "P40AE60E18F02DE32"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "hide": false,
+          "rawQuery": true,
+          "rawSql": "SELECT\r\n  \"time\" + interval '7 days' AS \"time\", \r\n  iaq_2h AS \"Semaine Dernière\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN \r\n    ($__timeTo()::timestamp - interval '14 days') \r\n    AND \r\n    ($__timeTo()::timestamp - interval '7 days')\r\n  AND appart_id = 1\r\nORDER BY 1",
+          "refId": "Semaine derniere",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        },
+        {
+          "dataset": "sensor_scores",
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\r\n  \"time\",\r\n  iaq_2h AS \"Cette Semaine\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN ($__timeTo()::timestamp - interval '7 days') AND $__timeTo()\r\n  AND appart_id = 1\r\nORDER BY 1",
+          "refId": "Cette Semaine",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Appartement 1 - Comparaison Hebdomadaire de l'IAQ sur le dernier mois",
+      "type": "state-timeline"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "P40AE60E18F02DE32"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 3,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "right",
+          "showLegend": false
+        },
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
@@ -128,152 +525,7 @@
         }
       ],
       "title": "Appartement 1 - Indice Isolation Thermique - Semaine Dernière",
-      "type": "state-timeline"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "P40AE60E18F02DE32"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "axisPlacement": "auto",
-            "fillOpacity": 70,
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineWidth": 0,
-            "spanNulls": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "dark-blue",
-                "value": 0
-              },
-              {
-                "color": "blue",
-                "value": 0.5
-              },
-              {
-                "color": "dark-green",
-                "value": 1
-              },
-              {
-                "color": "green",
-                "value": 1.5
-              },
-              {
-                "color": "dark-yellow",
-                "value": 2
-              },
-              {
-                "color": "yellow",
-                "value": 2.5
-              },
-              {
-                "color": "dark-orange",
-                "value": 3
-              },
-              {
-                "color": "orange",
-                "value": 3.5
-              },
-              {
-                "color": "dark-red",
-                "value": 4
-              },
-              {
-                "color": "red",
-                "value": 4.5
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "id": 1,
-      "options": {
-        "alignValue": "left",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "mergeValues": true,
-        "rowHeight": 0.9,
-        "showValue": "never",
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.1",
-      "targets": [
-        {
-          "dataset": "sensor_scores",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "${DS_TIMESCALEDB}"
-          },
-          "editorMode": "code",
-          "format": "table",
-          "hide": false,
-          "rawQuery": true,
-          "rawSql": "SELECT iaq_2h, \"time\" FROM scores WHERE appart_id =1",
-          "refId": "B",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [
-                  {
-                    "name": "iaq_2h",
-                    "type": "functionParameter"
-                  }
-                ],
-                "type": "function"
-              },
-              {
-                "parameters": [
-                  {
-                    "name": "\"time\"",
-                    "type": "functionParameter"
-                  }
-                ],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          },
-          "table": "scores"
-        }
-      ],
-      "title": "Appartement 01 - Qualité de l'air - Semaine Dernière",
-      "type": "state-timeline"
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -336,7 +588,7 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
+        "x": 12,
         "y": 8
       },
       "id": 3,
@@ -476,450 +728,28 @@
       ],
       "title": "Appartement 1 - Evolution Hebdomadaire de l'IIT sur le dernier mois",
       "type": "state-timeline"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "P40AE60E18F02DE32"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "custom": {
-            "axisPlacement": "auto",
-            "fillOpacity": 70,
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineWidth": 0,
-            "spanNulls": false
-          },
-          "fieldMinMax": false,
-          "mappings": [],
-          "max": 5,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#02a314",
-                "value": 0
-              },
-              {
-                "color": "#03b25f",
-                "value": 0.5
-              },
-              {
-                "color": "#04c1aa",
-                "value": 1
-              },
-              {
-                "color": "#05cff2",
-                "value": 1.5
-              },
-              {
-                "color": "#59c4a0",
-                "value": 2
-              },
-              {
-                "color": "#abb951",
-                "value": 2.5
-              },
-              {
-                "color": "#ffae00",
-                "value": 3
-              },
-              {
-                "color": "#f97700",
-                "value": 3.5
-              },
-              {
-                "color": "#f33c00",
-                "value": 4
-              },
-              {
-                "color": "dark-red",
-                "value": 5
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 8
-      },
-      "id": 4,
-      "options": {
-        "alignValue": "left",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "mergeValues": true,
-        "rowHeight": 0.9,
-        "showValue": "never",
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.1",
-      "targets": [
-        {
-          "dataset": "sensor_scores",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "P40AE60E18F02DE32"
-          },
-          "editorMode": "code",
-          "format": "table",
-          "hide": false,
-          "rawQuery": true,
-          "rawSql": "SELECT\r\n  \"time\" + interval '21 days' AS \"time\", \r\n  iaq_2h AS \"3 Semaines Avant\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN \r\n    ($__timeTo()::timestamp - interval '28 days') \r\n    AND \r\n    ($__timeTo()::timestamp - interval '21 days')\r\n  AND appart_id = 1\r\nORDER BY 1",
-          "refId": "Semaine encore encore avant",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        },
-        {
-          "dataset": "sensor_scores",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "P40AE60E18F02DE32"
-          },
-          "editorMode": "code",
-          "format": "table",
-          "hide": false,
-          "rawQuery": true,
-          "rawSql": "SELECT\r\n  \"time\" + interval '14 days' AS \"time\", \r\n  iaq_2h AS \"2 Semaines Avant\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN \r\n    ($__timeTo()::timestamp - interval '21 days') \r\n    AND \r\n    ($__timeTo()::timestamp - interval '14 days')\r\n  AND appart_id = 1\r\nORDER BY 1",
-          "refId": "Semaine encore avant",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        },
-        {
-          "dataset": "sensor_scores",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "P40AE60E18F02DE32"
-          },
-          "editorMode": "code",
-          "format": "table",
-          "hide": false,
-          "rawQuery": true,
-          "rawSql": "SELECT\r\n  \"time\" + interval '7 days' AS \"time\", \r\n  iaq_2h AS \"Semaine Dernière\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN \r\n    ($__timeTo()::timestamp - interval '14 days') \r\n    AND \r\n    ($__timeTo()::timestamp - interval '7 days')\r\n  AND appart_id = 1\r\nORDER BY 1",
-          "refId": "Semaine derniere",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        },
-        {
-          "dataset": "sensor_scores",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT\r\n  \"time\",\r\n  iaq_2h AS \"Cette Semaine\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN ($__timeTo()::timestamp - interval '7 days') AND $__timeTo()\r\n  AND appart_id = 1\r\nORDER BY 1",
-          "refId": "Cette Semaine",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "Appartement 1 - Comparaison Hebdomadaire de l'IAQ sur le dernier mois",
-      "type": "state-timeline"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "P40AE60E18F02DE32"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "custom": {
-            "axisPlacement": "auto",
-            "fillOpacity": 70,
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineWidth": 0,
-            "spanNulls": false
-          },
-          "fieldMinMax": false,
-          "mappings": [],
-          "max": 5,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#02a314",
-                "value": 0
-              },
-              {
-                "color": "#03b25f",
-                "value": 0.5
-              },
-              {
-                "color": "#04c1aa",
-                "value": 1
-              },
-              {
-                "color": "#05cff2",
-                "value": 1.5
-              },
-              {
-                "color": "#59c4a0",
-                "value": 2
-              },
-              {
-                "color": "#abb951",
-                "value": 2.5
-              },
-              {
-                "color": "#ffae00",
-                "value": 3
-              },
-              {
-                "color": "#f97700",
-                "value": 3.5
-              },
-              {
-                "color": "#f33c00",
-                "value": 4
-              },
-              {
-                "color": "dark-red",
-                "value": 5
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 16
-      },
-      "id": 5,
-      "options": {
-        "alignValue": "left",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "mergeValues": true,
-        "rowHeight": 0.9,
-        "showValue": "never",
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.1",
-      "targets": [
-        {
-          "dataset": "sensor_scores",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "P40AE60E18F02DE32"
-          },
-          "editorMode": "code",
-          "format": "table",
-          "hide": false,
-          "rawQuery": true,
-          "rawSql": "SELECT\r\n  \"time\" + interval '21 days' AS \"time\", \r\n  iaq_2h AS \"3 Semaines Avant\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN \r\n    ($__timeTo()::timestamp - interval '28 days') \r\n    AND \r\n    ($__timeTo()::timestamp - interval '21 days')\r\n  AND appart_id = 2\r\nORDER BY 1",
-          "refId": "Semaine encore encore avant",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        },
-        {
-          "dataset": "sensor_scores",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "P40AE60E18F02DE32"
-          },
-          "editorMode": "code",
-          "format": "table",
-          "hide": false,
-          "rawQuery": true,
-          "rawSql": "SELECT\r\n  \"time\" + interval '14 days' AS \"time\", \r\n  iaq_2h AS \"2 Semaines Avant\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN \r\n    ($__timeTo()::timestamp - interval '21 days') \r\n    AND \r\n    ($__timeTo()::timestamp - interval '14 days')\r\n  AND appart_id = 2\r\nORDER BY 1",
-          "refId": "Semaine encore avant",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        },
-        {
-          "dataset": "sensor_scores",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "P40AE60E18F02DE32"
-          },
-          "editorMode": "code",
-          "format": "table",
-          "hide": false,
-          "rawQuery": true,
-          "rawSql": "SELECT\r\n  \"time\" + interval '7 days' AS \"time\", \r\n  iaq_2h AS \"Semaine Dernière\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN \r\n    ($__timeTo()::timestamp - interval '14 days') \r\n    AND \r\n    ($__timeTo()::timestamp - interval '7 days')\r\n  AND appart_id = 2\r\nORDER BY 1",
-          "refId": "Semaine derniere",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        },
-        {
-          "dataset": "sensor_scores",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT\r\n  \"time\",\r\n  iaq_2h AS \"Cette Semaine\"\r\nFROM scores\r\nWHERE \"time\" BETWEEN ($__timeTo()::timestamp - interval '7 days') AND $__timeTo()\r\n  AND appart_id = 2\r\nORDER BY 1",
-          "refId": "Cette Semaine",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "Appartement 2 - Comparaison Hebdomadaire de l'IAQ sur le dernier mois",
-      "type": "state-timeline"
     }
   ],
-  "preload": false,
+  "preload": true,
   "refresh": "5s",
   "schemaVersion": 42,
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "text": "1766289000000",
+          "value": "1766289000000"
+        },
+        "definition": "SELECT MAX(time) from scores",
+        "name": "max_data_time",
+        "options": [],
+        "query": "SELECT MAX(time) from scores",
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "2025-12-23T23:00:00.000Z",
@@ -929,5 +759,6 @@
   "timezone": "browser",
   "title": "Immeuble 1",
   "uid": "admq8sr",
-  "version": 1
+  "version": 1,
+  "weekStart": "monday"
 }

@@ -68,7 +68,7 @@ def send_bdd(timestamp, id_appart=1, iaq_2h=0.0, iit=100.0):
 
 # ======== COMMUNICATION BDD ========
 
-# ======== LECTURE JSON ========
+# ======== MANIP QUEUES ========
 
 # def forgiving_json_deserializer(v):
 #     try:
@@ -77,7 +77,18 @@ def send_bdd(timestamp, id_appart=1, iaq_2h=0.0, iit=100.0):
 #         # log.exception('Unable to decode: %s', v)
 #         return None
 
+def empty_queues():
+  global timestamp_queue, temp_queue, humid_queue, co2_queue, co_queue, pm25_queue, tvoc_queue
+  timestamp_queue = list()
+  temp_queue = list()
+  humid_queue = list()
+  co2_queue = list()
+  co_queue = list()
+  pm25_queue = list()
+  tvoc_queue = list()
+
 def read_json(json_data):
+  global timestamp_queue, temp_queue, humid_queue, co2_queue, co_queue, pm25_queue, tvoc_queue
   timestamp_queue.append(json_data["timestamp"])
   temp_queue.append(json_data["temp"])
   humid_queue.append(json_data["humid"])
@@ -86,43 +97,36 @@ def read_json(json_data):
   pm25_queue.append(json_data["pm25"])
   tvoc_queue.append(json_data["tvoc"])
 
-# ======== LECTURE JSON ========
+# ======== MANIP QUEUES ========
 
 def main():
   global timestamp_queue, temp_queue, humid_queue, co2_queue, co_queue, pm25_queue, tvoc_queue
+  
   try:
     while True:
+
       msg = c.poll(1.0)
+      
       if msg is None: print(f"[INFO] Waiting for topic messages", file=log_file)
       elif msg.error(): print(f"[ERROR] {msg.error()}")
-      else : # consommation miam miam
+      
+      else :
         print(f"[INFO] Received data from topic", file=log_file)
+        
         data_bytes = msg.value()
         data_str = data_bytes.decode('utf-8')
         data_dict = json.loads(data_str)
-        timestamp_queue.append(data_dict["timestamp"])
-        temp_queue.append(data_dict["temp"])
-        humid_queue.append(data_dict["humid"])
-        co2_queue.append(data_dict["co2"])
-        co_queue.append(data_dict["co"])
-        pm25_queue.append(data_dict["pm25"])
-        tvoc_queue.append(data_dict["tvoc"])
+        
+        read_json(data_dict)
+        
         if (len(timestamp_queue) == 12):
           IAQ_2h = client_iaq.IAQ(co2_queue, co_queue, "", pm25_queue, tvoc_queue)
           send_bdd(timestamp_queue[0], 1, IAQ_2h, random.uniform(0.0, 100.0))
-          timestamp_queue = list()
-          temp_queue = list()
-          humid_queue = list()
-          co2_queue = list()
-          co_queue = list()
-          pm25_queue = list()
-          tvoc_queue = list()
-        # read_json(...)
-        # if (len(timestamp_queue) == 12) : 
-        #   IAQ_2h = client_iaq.IAQ(co2_queue, co_queue, "", pm25_queue, tvoc_queue)
-        #   send_bdd(timestamp_queue[0], 1, IAQ_2h, random.uniform(0.0, 100.0))
+          empty_queues()
+
   except KeyboardInterrupt:
     pass
+
   finally:
     c.close()
 
@@ -135,14 +139,6 @@ def main():
 
 if __name__ == "__main__":
   client_iaq = IAQ.CLIENT_AIR_QUALITY()
-
-  timestamp_queue = list()
-  temp_queue = list()
-  humid_queue = list()
-  co2_queue = list()
-  co_queue = list()
-  pm25_queue = list()
-  tvoc_queue = list()
 
   log_file = open(datetime.now().strftime("%d%m%Y_%H%M%S")+".log", 'a')
   main()

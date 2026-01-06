@@ -21,7 +21,7 @@ producer = Producer(config)
 topic = "APT_101"
 
 try:
-  with open('dataset_apt_101.csv', newline='') as csvfile:
+  with open('datasets/dataset_apt_101.csv', newline='') as csvfile:
     file = list(csv.reader(csvfile, delimiter=',', quotechar='|'))
     for i in range(1,len(file)):
       cur_json = dict()
