@@ -6,7 +6,7 @@ Structure :
 - Étage 2 : APT_201 (Nord), APT_202 (Est), APT_203 (Sud), APT_204 (Ouest)
 """
 #TODO: IDEE ->representer les apparts sous forme de tableau 2D avec l'emplacement des capteurs, murs... pour mieux piloter les modif des conditions avec un yaml
-
+#TODO: 
 APARTMENTS = {
     # =================== ÉTAGE 1 ===================
     "APT_101": {

@@ -30,7 +30,9 @@ from generators import (
     update_tvoc,
 )
 
-#TODO: add energy consumption generation temperature dependent
+# TODO: add energy consumption generation temperature dependent
+# TODO: fonction qui insert des données erronées (capteur HS, valeurs aberrantes...) pour tester la filtration et suivi dans les logs 
+#   ou les mettre dans les fichiers responsables de la génération de chaque données cpteurs 
 
 def generate_room_data(
     room_name: str,

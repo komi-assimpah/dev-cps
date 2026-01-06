@@ -71,10 +71,34 @@ services:
     networks:
       - dev-cps-network
 
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # MQTT standard
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto-data:/mosquitto/data
+    networks:
+      - dev-cps-network
+
+  mqtt-kafka-bridge:
+    build: ./mqtt-kafka-bridge
+    container_name: mqtt_kafka_bridge
+    depends_on:
+      - mosquitto
+      - kafka
+    environment:
+      MQTT_BROKER: mosquitto
+      KAFKA_BROKER: kafka:29092
+    networks:
+      - dev-cps-network
 
 volumes:
   mongodb-data:
   kafka-data:
+  mosquitto-data:
 
 
 networks:
