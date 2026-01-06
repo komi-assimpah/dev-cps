@@ -18,3 +18,6 @@ grafana_data/
 
 # Si tu as un fichier .env avec des mots de passe
 .env
+todo
+package-lock.json
+node_modules/
