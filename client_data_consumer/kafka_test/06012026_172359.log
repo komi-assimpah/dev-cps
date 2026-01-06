@@ -1,0 +1,61 @@
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[SUCCESS] INSERT INTO scores (time, appart_id, IAQ_2H, IIT_2H) VALUES (to_timestamp(1764545400), 1, 0.5238, 2.9651305399243433);
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[SUCCESS] INSERT INTO scores (time, appart_id, IAQ_2H, IIT_2H) VALUES (to_timestamp(1764546600), 1, 0.7476, 57.150843567831664);
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[SUCCESS] INSERT INTO scores (time, appart_id, IAQ_2H, IIT_2H) VALUES (to_timestamp(1764553800), 1, 0.8314, 62.039679868699224);
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[SUCCESS] INSERT INTO scores (time, appart_id, IAQ_2H, IIT_2H) VALUES (to_timestamp(1764561000), 1, 0.8314, 88.64384636110431);
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[SUCCESS] INSERT INTO scores (time, appart_id, IAQ_2H, IIT_2H) VALUES (to_timestamp(1764568200), 1, 1.0437, 35.25673114222637);
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
+[INFO] Waiting for topic messages
