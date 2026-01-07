@@ -37,6 +37,6 @@ try:
       print(json_string)
       producer.produce(topic, json_string, "test_producer")
       producer.flush()
-      time.sleep(1)
+      time.sleep(0.1)
 except Exception as e:
   print(f"{e}")

@@ -4,6 +4,24 @@ from confluent_kafka import Consumer, KafkaError
 import psycopg2
 import random
 from datetime import datetime, timezone
+import argparse
+
+
+# ======== DECLARATION DES ARGUMENTS ========
+
+parser = argparse.ArgumentParser(
+  prog='Kafka-consumer',
+  description='Prend les donnees du topic Kafka APT_10x pour calculer les scores IAQ_2h et IIT_2h et les envoyer a la BDD'
+)
+
+parser.add_argument('APT_ID', 
+                    type = int, 
+                    help = 'le dernier chiffre de l\'identifiant de l\'appartement',
+                    default = 1
+                    )
+
+# ======== DECLARATION DES ARGUMENTS ========
+
 
 # ======== CONFIG DES SERVICES ========
 
@@ -22,19 +40,11 @@ db_params = {
 
 # ======== CONFIG DES SERVICES ========
 
-
-# ======== CONFIG KAFKA ========
-
-c = Consumer(conf)
-topic = "APT_101"
-c.subscribe([topic])
-
-# ======== CONFIG KAFKA ========
-
-
 # ======== SETUP VARIABLES ========
 
 MAX_LEN_QUEUES = 12
+
+apt_id = 0
 
 client_iaq = IAQ.CLIENT_AIR_QUALITY()
 
@@ -50,7 +60,8 @@ tvoc_queue = list()
 
 # ======== COMMUNICATION BDD ========
 
-def send_bdd(timestamp, id_appart=1, iaq_2h=0.0, iit=100.0):
+def send_bdd(timestamp, iaq_2h=0.0, iit=100.0):
+  global apt_id
   try:
     conn = psycopg2.connect(**db_params)
     cur = conn.cursor()
@@ -58,24 +69,17 @@ def send_bdd(timestamp, id_appart=1, iaq_2h=0.0, iit=100.0):
     insert_query = """
     INSERT INTO scores (time, appart_id, IAQ_2H, IIT_2H) VALUES (to_timestamp(%s), %s, %s, %s);
     """
-    cur.execute(insert_query, (timestamp, id_appart, iaq_2h, iit))
+    cur.execute(insert_query, (timestamp, apt_id, iaq_2h, iit))
     conn.commit()
     cur.close()
     conn.close()
-    print(f"[SUCCESS] INSERT INTO scores (time, appart_id, IAQ_2H, IIT_2H) VALUES (to_timestamp({timestamp}), {id_appart}, {iaq_2h}, {iit});", file=log_file)
+    print(f"[SUCCESS] INSERT INTO scores (time, appart_id, IAQ_2H, IIT_2H) VALUES (to_timestamp({timestamp}), {apt_id}, {iaq_2h}, {iit});", file=log_file)
   except Exception as e:
     print(f"[ERROR] {e}", file=log_file)
 
 # ======== COMMUNICATION BDD ========
 
 # ======== MANIP QUEUES ========
-
-# def forgiving_json_deserializer(v):
-#     try:
-#         return json.loads(v.decode('utf-8'))
-#     except json.decoder.JSONDecodeError:
-#         # log.exception('Unable to decode: %s', v)
-#         return None
 
 def empty_queues():
   global timestamp_queue, temp_queue, humid_queue, co2_queue, co_queue, pm25_queue, tvoc_queue
@@ -100,12 +104,12 @@ def read_json(json_data):
 # ======== MANIP QUEUES ========
 
 def main():
-  global timestamp_queue, temp_queue, humid_queue, co2_queue, co_queue, pm25_queue, tvoc_queue
+  global timestamp_queue, temp_queue, humid_queue, co2_queue, co_queue, pm25_queue, tvoc_queue, apt_id
   
   try:
     while True:
 
-      msg = c.poll(1.0)
+      msg = c.poll(0.1)
       
       if msg is None: print(f"[INFO] Waiting for topic messages", file=log_file)
       elif msg.error(): print(f"[ERROR] {msg.error()}")
@@ -113,15 +117,22 @@ def main():
       else :
         print(f"[INFO] Received data from topic", file=log_file)
         
+        # lire et decoder les valeurs
         data_bytes = msg.value()
         data_str = data_bytes.decode('utf-8')
         data_dict = json.loads(data_str)
         
+        # mettre a jour les queues
         read_json(data_dict)
         
+        # une fois qu'on a 12 valeurs dans les queues
         if (len(timestamp_queue) == 12):
+          # on calcule les scores
           IAQ_2h = client_iaq.IAQ(co2_queue, co_queue, "", pm25_queue, tvoc_queue)
-          send_bdd(timestamp_queue[0], 1, IAQ_2h, random.uniform(0.0, 100.0))
+          # IIT_2h = ....
+
+          # on envoie a la bdd et on vide les queues
+          send_bdd(timestamp_queue[0], IAQ_2h, random.uniform(0.0, 100.0))
           empty_queues()
 
   except KeyboardInterrupt:
@@ -130,24 +141,19 @@ def main():
   finally:
     c.close()
 
-  # while (len(timestamp_queue) != 12):
-  #   print(f"[INFO] lecture de : messages_test/message{len(timestamp_queue)}.json'", file=log_file)
-  #   read_json('messages_test/message'+str(len(timestamp_queue))+'.json')
-  # IAQ_2h = client_iaq.IAQ(co2_queue, co_queue, "", pm25_queue, tvoc_queue)
-  # print(f"[INFO] IAQ_2h : {IAQ_2h}", file=log_file)
-  # send_bdd(timestamp_queue[0], 1, IAQ_2h, random.uniform(0.0, 100.0))
-
 if __name__ == "__main__":
+  args = parser.parse_args()
+  apt_id = args.APT_ID
+
+  # ======== CONFIG KAFKA ========
+
+  c = Consumer(conf)
+  topic = "APT_10"+str(apt_id)
+  c.subscribe([topic])
+
+  # ======== CONFIG KAFKA ========
+
   client_iaq = IAQ.CLIENT_AIR_QUALITY()
 
   log_file = open(datetime.now().strftime("%d%m%Y_%H%M%S")+".log", 'a')
   main()
-
-
-# print(f"timestamp: {timestamp_queue[0]}")
-# print(f"temperature : {temp_queue}")
-# print(f"humidity : {humid_queue}")
-# print(f"ICONE : {client_iaq.co2_score(co2_queue)} | co2 : {co2_queue}")
-# print(f"co SCORE : {client_iaq.co_score(co_queue, "")} | co : {co_queue}")
-# print(f"pm25 SCORE : {client_iaq.pm25_score(pm25_queue)} | pm25 : {pm25_queue}")
-# print(f"cov SCORE : {client_iaq.cov_score(tvoc_queue)} | tvoc : {tvoc_queue}")
