@@ -1,89 +1,114 @@
 import calcul_scores.air_quality as IAQ
 import calcul_scores.isolation as IIT
 import csv
-from datetime import datetime, timezone
+from datetime import datetime # , timezone
 import json
-import psycopg2
-import random
+import time
+from scipy.signal import medfilt
+import numpy as np
+# import json
+# import psycopg2
+# import random
+
+# ==== SETUP VARIABLES ====
 
 user_iaq = IAQ.USER_AIR_QUALITY()
 user_iit = IIT.USER_ISOLATION_SCORE()
-qt_data = 4
+qt_data = 5
 
-print("timestamp, id_appart, avg_temp, avg_humid, avg_co2, avg_co, avg_pm25, avg_tvoc")
-for i in range(1,10):
-  filename = "datasets/apt_102_2025-12-0"+str(i)+".csv"
+DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc"]
+THRESHOLD_DATA_TYPE = [5.0, 5.0, 50.0, 5.0, 1.0, 1000.0]
+
+last_values = dict()
+nb_outliers = dict()
+
+for k in range(len(DATA_TYPES)):
+  last_values[DATA_TYPES[k]] = list()
+  nb_outliers[DATA_TYPES[k]] = list()
+
+
+# ==== SETUP VARIABLES ====
+
+# ==== FONCTIONS UTILITAIRES ====
+
+def encoder(obj):
+  if isinstance(obj, set):
+    return list(obj)
+  return obj
+
+def gen_list_of_sensor_data(column: int) -> list:
+  global qt_data, file, i
+  return [float(rows[column]) for rows in file[i:i+qt_data] if (rows[column])]
+
+def avg(data: list) -> float:
+  count = len(data) - data.count(None)
+  mean = sum(dat for dat in data if dat != None)/count
+  return round(mean, 3)
+
+def create_json(timestamp: int, temperature: float, humidity: float, co2: float, co: float, pm25: float, tvoc: float) -> dict:
+  json_data = dict()
+  json_data["timestamp"] = timestamp
+  json_data["temperature"] = temperature
+  json_data["humidity"] = humidity
+  json_data["co2"] = co2
+  json_data["co"] = co
+  json_data["pm25"] = pm25
+  json_data["tvoc"] = tvoc
+
+def remove_outliers(new_data: list, data_type: str, threshold=5.0):
+  global last_values, nb_outliers
   try:
-    with open(filename, newline='') as csvfile:
-      file = list(csv.reader(csvfile, delimiter=',', quotechar='|'))
-      for i in range(1,len(file),qt_data):
-        timestamp = datetime.fromisoformat(file[i][0])
-        timestamp_int = int(timestamp.timestamp())
+    # print(data_type)
+    start_idx = len(last_values[data_type])
 
-        temp_values = [float(rows[5]) for rows in file[i:i+qt_data]]
-        count_temp_values = len(temp_values) - temp_values.count(0)
-        avg_temp = round(sum(temp_values)/count_temp_values, 3)
+    last_values[data_type].extend(new_data)
 
-        humid_values = [float(rows[6]) for rows in file[i:i+qt_data]]
-        count_humid_values = len(humid_values) - humid_values.count(0)
-        avg_humid = round(sum(humid_values)/count_humid_values, 3)
+    med_filtered = medfilt(last_values[data_type], kernel_size=5)
 
-        co2_values = [float(rows[7]) if rows[7] else 0.0 for rows in file[i:i+qt_data]]
-        count_co2_values = len(co2_values) - co2_values.count(0)
-        avg_co2 = round(sum(co2_values)/count_co2_values, 3)
-        # print(avg_co2)
+    raw_new = np.array(last_values[data_type][start_idx:])
+    filtered_new = med_filtered[start_idx:]
 
-        pm_values = [float(rows[8]) for rows in file[i:i+qt_data]]
-        count_pm_values = len(pm_values) - pm_values.count(0)
-        avg_pm = round(sum(pm_values)/count_pm_values, 3)
+    diff = np.abs(raw_new - filtered_new)
+    outliers_detectes = diff > threshold
+    nb_outliers = np.sum(outliers_detectes)
+    
+    outliers = list()
+    indices = np.where(outliers_detectes)[0]
+    for i in indices: outliers.append(raw_new[i])
 
-        co_values = [float(rows[9]) for rows in file[i:i+qt_data]]
-        count_co_values = len(co_values) - co_values.count(0)
-        avg_co = round(sum(co_values)/count_co_values, 3)
+    if nb_outliers > 0: print(f"[INFO] [{data_type}] Détection de {nb_outliers} outliers : {outliers}")
 
-        tvoc_values = [float(rows[10]) for rows in file[i:i+qt_data]]
-        count_tvoc_values = len(tvoc_values) - tvoc_values.count(0)
-        avg_tvoc = round(sum(tvoc_values)/count_tvoc_values, 3)
-
-        print(f"{timestamp_int}, 2, {avg_temp}, {avg_humid}, {avg_co2}, {avg_co}, {avg_pm}, {avg_tvoc}")
+    return (list(med_filtered[-5:]), outliers)
   except Exception as e:
-    print(f"pas de data :( {e}")
+    print(f"ERROR : {e}")
+    return new_data
 
+# ==== FONCTIONS UTILITAIRES ====
 
-for i in range(10,31):
-  filename = "datasets/apt_102_2025-12-"+str(i)+".csv"
-  try:
-    with open(filename, newline='') as csvfile:
-      file = list(csv.reader(csvfile, delimiter=',', quotechar='|'))
-      for i in range(1,len(file),qt_data):
-        timestamp = datetime.fromisoformat(file[i][0])
-        timestamp_int = int(timestamp.timestamp())
+def main():
+  global file, i
+  # print("timestamp, id_appart, avg_temp, avg_humid, avg_co2, avg_co, avg_pm25, avg_tvoc")
+  for i in range(1):
+    filename = "output/apt_101_2025-12-01.csv"
+    # filename = f"datasets/apt_102_2025-12-0{i:02d}.csv"
+    try:
+      with open(filename, newline='') as csvfile:
+        file = list(csv.reader(csvfile, delimiter=',', quotechar='|'))
+        for i in range(1,len(file),qt_data):
+          json_data = dict()
+          json_data["timestamp"] = int(datetime.fromisoformat(file[i][0]).timestamp())
+          for j in range(len(DATA_TYPES)):
+            l = gen_list_of_sensor_data(j+5)
+            (data, outliers) = remove_outliers(l, DATA_TYPES[j], THRESHOLD_DATA_TYPE[j])
+            consecutive_outliers = 0 if len(outliers) == 0 else consecutive_outliers+len(outliers)
+            json_data[DATA_TYPES[j]] = avg(data)
+          final_json = json.dumps(json_data, default=encoder)
+          time.sleep(0.1)
+          
+    except Exception as e:
+      print(f"pas de data :( {e}")
 
-        temp_values = [float(rows[5]) for rows in file[i:i+qt_data]]
-        count_temp_values = len(temp_values) - temp_values.count(0)
-        avg_temp = round(sum(temp_values)/count_temp_values, 3)
-
-        humid_values = [float(rows[6]) for rows in file[i:i+qt_data]]
-        count_humid_values = len(humid_values) - humid_values.count(0)
-        avg_humid = round(sum(humid_values)/count_humid_values, 3)
-
-        co2_values = [float(rows[7]) if rows[7] else 0.0 for rows in file[i:i+qt_data]]
-        count_co2_values = len(co2_values) - co2_values.count(0)
-        avg_co2 = round(sum(co2_values)/count_co2_values, 3)
-        # print(avg_co2)
-
-        pm_values = [float(rows[8]) for rows in file[i:i+qt_data]]
-        count_pm_values = len(pm_values) - pm_values.count(0)
-        avg_pm = round(sum(pm_values)/count_pm_values, 3)
-
-        co_values = [float(rows[9]) for rows in file[i:i+qt_data]]
-        count_co_values = len(co_values) - co_values.count(0)
-        avg_co = round(sum(co_values)/count_co_values, 3)
-
-        tvoc_values = [float(rows[10]) for rows in file[i:i+qt_data]]
-        count_tvoc_values = len(tvoc_values) - tvoc_values.count(0)
-        avg_tvoc = round(sum(tvoc_values)/count_tvoc_values, 3)
-
-        print(f"{timestamp_int}, 2, {avg_temp}, {avg_humid}, {avg_co2}, {avg_co}, {avg_pm}, {avg_tvoc}")
-  except Exception as e:
-    print(f"pas de data :( {e}")
+if __name__ == "__main__":
+  file = None
+  i = 0
+  main()
