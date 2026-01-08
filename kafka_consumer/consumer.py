@@ -73,9 +73,9 @@ def send_bdd(timestamp, iaq_2h=0.0, iit=100.0):
     conn.commit()
     cur.close()
     conn.close()
-    print(f"[SUCCESS] INSERT INTO scores (time, appart_id, IAQ_2H, IIT_2H) VALUES (to_timestamp({timestamp}), {apt_id}, {iaq_2h}, {iit});", file=log_file)
+    print(f"[SUCCESS] Envoi des données vers la bdd : timestamp : {timestamp} apt_id : {apt_id} IAQ_2h : {iaq_2h} IIT_2h : {iit}")
   except Exception as e:
-    print(f"[ERROR] {e}", file=log_file)
+    print(f"[ERROR] {e}")
 
 # ======== COMMUNICATION BDD ========
 
@@ -94,8 +94,8 @@ def empty_queues():
 def read_json(json_data):
   global timestamp_queue, temp_queue, humid_queue, co2_queue, co_queue, pm25_queue, tvoc_queue
   timestamp_queue.append(json_data["timestamp"])
-  temp_queue.append(json_data["temp"])
-  humid_queue.append(json_data["humid"])
+  temp_queue.append(json_data["temperature"])
+  humid_queue.append(json_data["humidity"])
   co2_queue.append(json_data["co2"])
   co_queue.append(json_data["co"])
   pm25_queue.append(json_data["pm25"])
@@ -109,13 +109,13 @@ def main():
   try:
     while True:
 
-      msg = c.poll(0.1)
+      msg = c.poll(0.2)
       
-      if msg is None: print(f"[INFO] Waiting for topic messages", file=log_file)
+      if msg is None: print(f"[INFO] Attente de messages")
       elif msg.error(): print(f"[ERROR] {msg.error()}")
       
       else :
-        print(f"[INFO] Received data from topic", file=log_file)
+        print(f"[INFO] Données reçues du topic {msg.topic()} : {msg.key().decode('utf-8')}")
         
         # lire et decoder les valeurs
         data_bytes = msg.value()
@@ -155,5 +155,5 @@ if __name__ == "__main__":
 
   client_iaq = IAQ.CLIENT_AIR_QUALITY()
 
-  log_file = open(datetime.now().strftime("%d%m%Y_%H%M%S")+".log", 'a')
+  # log_file = open(datetime.now().strftime("%d%m%Y_%H%M%S")+".log", 'a')
   main()
