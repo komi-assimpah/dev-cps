@@ -19,4 +19,4 @@ ENV MODE=realtime
 ENV INTERVAL=600
 ENV SPEED=600
 
-CMD ["python", "-u", "generate.py", "--mode", "realtime"]
+CMD ["python", "-u", "generate.py", "--mode", "realtime", "--inject-anomalies"]
