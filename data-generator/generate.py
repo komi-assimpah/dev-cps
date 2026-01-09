@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 from typing import List
 
 from config import APARTMENTS, WEATHER, INITIAL_SENSOR_VALUES, INTERVAL_10_MINS
+from anomaly_injector.anomalies import random_inject_anomaly
 from generators import (
     generate_weather_for_day,
     get_external_pm25,
@@ -212,6 +213,7 @@ def run_realtime_mode(args, apartments: dict):
     print(f"Broker MQTT : {args.mqtt_broker}:{args.mqtt_port}")
     print(f"Appartements : {len(apartments)}")
     print(f"Speed factor : {args.speed} (0=max speed)")
+    if args.inject_anomalies: print("⚠ Injection anomalies : ACTIVÉE ")
     print("=" * 50)
     
     publisher = MQTTPublisher()
@@ -270,6 +272,9 @@ def run_realtime_mode(args, apartments: dict):
                     sensor_data["timestamp"] = timestamp.isoformat()
                     sensor_data["apartment_id"] = apt_id
                     
+                    if args.inject_anomalies:
+                        sensor_data = random_inject_anomaly(sensor_data)
+                    
                     publisher.publish_sensor_data(apt_id, room_name, sensor_data)
                     message_count += 1
             
@@ -309,10 +314,11 @@ def main():
     parser.add_argument("--mqtt-port", type=int, default=default_port, help="Port broker MQTT")
     parser.add_argument("--interval", type=int, default=default_interval, help=f"Intervalle simulé entre lectures capteurs en secondes (défaut={INTERVAL_10_MINS}s soit {INTERVAL_10_MINS//60}min)")
     parser.add_argument("--speed", type=int, default=int(default_speed) if default_speed else None, help="Facteur d'accélération temps réel (défaut=interval pour 1sec réelle, 0=max speed)")
+    parser.add_argument("--inject-anomalies", action="store_true", help="Injecter des anomalies aléatoires pour tester le filtrage")
     
     args = parser.parse_args()
     
-    # Si --speed n'est pas spécifié, utiliser --interval pour avoir 1 seconde réelle par défaut
+    # Si --speed n'est pas spécifié, on utilise --interval pour avoir 1 seconde réelle par défaut
     if args.speed is None:
         args.speed = args.interval
     
