@@ -7,6 +7,13 @@ Structure :
 """
 #TODO: IDEE ->representer les apparts sous forme de tableau 2D avec l'emplacement des capteurs, murs... pour mieux piloter les modif des conditions avec un yaml
 #TODO: 
+# =================== INTERVALLES DE LECTURE CAPTEURS ===================
+INTERVAL_5_MINS = 300
+INTERVAL_10_MINS = 600
+INTERVAL_15_MINS = 900
+INTERVAL_30_MINS = 1800
+INTERVAL_1_HOUR = 3600
+
 APARTMENTS = {
     # =================== ÉTAGE 1 ===================
     "APT_101": {
@@ -78,7 +85,7 @@ APARTMENTS = {
         "rooms": ["salon", "chambre", "cuisine", "sdb"],
         "rooms_with_co2": ["salon", "cuisine"],
         "temp_offset": -1.5,
-        "heat_loss_factor": 1.3,
+        "heat_loss_factor": 1.2,
         "user": {
             "name": "Pierre Télétravail",
             "schedule": {"wake_up": 8, "leave_home": 12, "come_back": 13, "sleep_time": 23},
@@ -98,7 +105,7 @@ APARTMENTS = {
             "name": "Sophie Infirmière",
             "schedule": {"wake_up": 5, "leave_home": 6, "come_back": 15, "sleep_time": 21},
             "work_days": [0, 1, 2, 4, 5],
-            "temp_preference": 20.0,
+            "temp_preference": 23.0,
         }
     },
     "APT_203": {
@@ -140,3 +147,12 @@ WEATHER = {
     "temp_max": 14.0,
     "humidity_base": 65.0,
 }
+
+INITIAL_SENSOR_VALUES = {
+    "co2": 550.0,        # ppm - niveau normal intérieur
+    "humidity": 50.0,    # % - confort standard
+    "pm25": 15.0,        # µg/m³ - niveau urbain faible
+    "co": 0.8,           # ppm - niveau résidentiel normal
+    "tvoc": 250.0,       # µg/m³ - niveau acceptable
+}
+

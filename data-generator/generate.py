@@ -1,20 +1,29 @@
 """
-Générateur de CSV pour les capteurs IoT.
+Générateur de données capteurs IoT.
 
 Usage :
-    python generate.py                      # 1 jour, tous les appartements
-    python generate.py --days 7             # 1 semaine
-    python generate.py --apartment APT_101  # Un seul appartement
-    python generate.py --days 1 --apartment APT_101
+    # Mode batch (CSV) - par défaut
+    python generate.py                          # 1 jour, tous les appartements
+    python generate.py --days 7                 # 1 semaine
+    python generate.py --apartment APT_101      # Un seul appartement
+
+    # Mode temps réel (MQTT)
+    python generate.py --mode realtime                        # Défaut: lectures toutes les 10min simulées, publiées toutes les 1sec réelle
+    python generate.py --mode realtime --interval 300         # Lectures toutes les 5min simulées, publiées toutes les 1sec réelle
+    python generate.py --mode realtime --interval 300 --speed 600   # Lectures toutes les 5min simulées, publiées 2x plus vite (0.5sec réelle)
+    python generate.py --mode realtime --speed 0              # Aussi vite que possible
+
+    Formule : délai_réel = interval / speed
 """
 
 import csv
 import os
 import argparse
+import time
 from datetime import datetime, timedelta
 from typing import List
 
-from config import APARTMENTS, WEATHER
+from config import APARTMENTS, WEATHER, INITIAL_SENSOR_VALUES, INTERVAL_10_MINS
 from generators import (
     generate_weather_for_day,
     get_external_pm25,
@@ -33,17 +42,36 @@ from generators import (
 # TODO: add energy consumption generation temperature dependent
 # TODO: fonction qui insert des données erronées (capteur HS, valeurs aberrantes...) pour tester la filtration et suivi dans les logs 
 #   ou les mettre dans les fichiers responsables de la génération de chaque données cpteurs 
+#TODO:ugmenter la frequence de lecture des capteurs critiques (CO2, PM25, CO, TVOC)
 
-def generate_room_data(
-    room_name: str,
-    apt_config: dict,
-    weather: List[dict],
-    date: datetime
-) -> List[dict]:
-    """Génère les données pour UNE pièce sur UNE journée."""
-    data = []
-    day_of_week = date.weekday()
+class RoomState:
+    """État d'une pièce (valeurs courantes des capteurs)."""
     
+    def __init__(self, apt_config: dict, room_name: str):
+        user = apt_config["user"]
+        self.temp = user["temp_preference"] - 1.5 + apt_config["temp_offset"]
+        self.co2 = INITIAL_SENSOR_VALUES["co2"]
+        self.humidity = INITIAL_SENSOR_VALUES["humidity"]
+        self.pm25 = INITIAL_SENSOR_VALUES["pm25"]
+        self.co = INITIAL_SENSOR_VALUES["co"]
+        self.tvoc = INITIAL_SENSOR_VALUES["tvoc"]
+        self.window_open = False
+
+
+def update_room_sensors(
+    state: RoomState,
+    apt_config: dict,
+    room_name: str,
+    hour: int,
+    minute: int,
+    day_of_week: int,
+    temp_ext: float,
+    humidity_ext: float
+) -> dict:
+    """
+    Met à jour l'état des capteurs d'une pièce et retourne les données.
+    Cette fonction est utilisée par les deux modes (batch et realtime).
+    """
     user = apt_config["user"]
     temp_pref = user["temp_preference"]
     temp_offset = apt_config["temp_offset"]
@@ -51,68 +79,58 @@ def generate_room_data(
     orientation = apt_config["orientation"]
     has_co2 = room_name in apt_config["rooms_with_co2"]
     
-    current_temp = temp_pref - 1.5 + temp_offset
-    current_co2 = 550.0
-    current_humidity = 50.0
-    current_pm25 = 15.0   # Niveau initial urbain (µg/m³)
-    current_co = 0.8      # Niveau initial faible (ppm)
-    current_tvoc = 250.0  # Niveau initial acceptable (µg/m³)
-    window_open = False
+    presence = is_user_home(hour, minute, day_of_week, user)
+    state.window_open = window_is_opened(state.window_open, presence, state.co2, hour, state.temp, room_name)
+    
+    state.temp = update_temperature(
+        state.temp, temp_ext, state.window_open, presence,
+        temp_pref, temp_offset, heat_loss, orientation, hour
+    )
+    
+    state.co2 = update_co2(state.co2, presence, state.window_open, room_name, hour)
+    state.humidity = update_humidity(state.humidity, humidity_ext, state.window_open, presence, room_name, hour)
+    state.pm25 = update_pm25(state.pm25, get_external_pm25(hour), state.window_open, presence, room_name, hour)
+    state.co = update_co(state.co, get_external_co(), state.window_open, presence, room_name, hour)
+    state.tvoc = update_tvoc(state.tvoc, get_external_tvoc(), state.window_open, presence, room_name, hour)
+    
+    return {
+        "room": room_name,
+        "temperature": round(state.temp, 2),
+        "humidity": round(state.humidity, 2),
+        "co2": round(state.co2, 2) if has_co2 else None,
+        "pm25": round(state.pm25, 2),
+        "co": round(state.co, 3),
+        "tvoc": round(state.tvoc, 2),
+        "window_open": state.window_open,
+        "presence": presence,
+        "temp_ext": temp_ext,
+        "humidity_ext": humidity_ext,
+    }
+
+
+def generate_room_data(room_name: str, apt_config: dict, weather: List[dict], date: datetime) -> List[dict]:
+    """Génère les données pour UNE pièce sur UNE journée (mode batch)."""
+    state = RoomState(apt_config, room_name)
+    data = []
+    day_of_week = date.weekday()
     
     for w in weather:
-        hour = w["hour"]
-        minute = w["minute"]
-        temp_ext = w["temp_ext"]
-        humidity_ext = w["humidity_ext"]
-        
+        hour, minute = w["hour"], w["minute"]
         timestamp = date.replace(hour=hour, minute=minute, second=0)
         
-        presence = is_user_home(hour, minute, day_of_week, user)
-        
-        window_open = window_is_opened(window_open, presence, current_co2, hour)
-        
-        current_temp = update_temperature(
-            current_temp, temp_ext, window_open, presence,
-            temp_pref, temp_offset, heat_loss, orientation, hour
+        sensor_data = update_room_sensors(
+            state, apt_config, room_name,
+            hour, minute, day_of_week,
+            w["temp_ext"], w["humidity_ext"]
         )
-        
-        if has_co2:
-            current_co2 = update_co2(current_co2, presence, window_open, room_name, hour)
-        
-        current_humidity = update_humidity(current_humidity, humidity_ext, window_open, presence, room_name, hour)
-        
-        external_pm25 = get_external_pm25(hour)
-        current_pm25 = update_pm25(current_pm25, external_pm25, window_open, presence, room_name, hour)
-        
-        external_co = get_external_co()
-        current_co = update_co(
-            current_co, external_co, window_open, presence, room_name, hour
-        )
-        
-        external_tvoc = get_external_tvoc()
-        current_tvoc = update_tvoc(
-            current_tvoc, external_tvoc, window_open, presence, room_name, hour
-        )
-        
-        data.append({
-            "timestamp": timestamp.isoformat(),
-            "room": room_name,
-            "temperature": current_temp,
-            "humidity": current_humidity,
-            "co2": current_co2 if has_co2 else None,
-            "pm25": current_pm25,
-            "co": current_co,
-            "tvoc": current_tvoc,
-            "window_open": window_open,
-            "presence": presence,
-            "temp_ext": temp_ext,
-            "humidity_ext": humidity_ext,
-        })
+        sensor_data["timestamp"] = timestamp.isoformat()
+        data.append(sensor_data)
     
     return data
 
 
 def generate_apartment_data(apt_id: str, apt_config: dict, weather: List[dict], date: datetime) -> List[dict]:
+    """Génère les données pour un appartement sur une journée."""
     all_data = []
     
     for room in apt_config["rooms"]:
@@ -137,7 +155,7 @@ def save_csv(data: List[dict], filename: str):
         writer.writeheader()
         writer.writerows(data)
     
-    print(f"  [OK] {filename} generated: ({len(data)} lignes)")
+    print(f"  [OK] {filename} ({len(data)} lignes)")
 
 
 def save_weather_csv(weather: List[dict], date: datetime, filename: str):
@@ -154,32 +172,17 @@ def save_weather_csv(weather: List[dict], date: datetime, filename: str):
     print(f"  [OK] {filename} ({len(weather)} lignes)")
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Génère les CSV de données capteurs")
-    parser.add_argument("--days", type=int, default=1, help="Nombre de jours")
-    parser.add_argument("--apartment", type=str, default=None, help="Un seul appartement")
-    parser.add_argument("--output", type=str, default="output", help="Dossier de sortie")
-    args = parser.parse_args()
-    
+def run_csv_batch_mode(args, apartments: dict):
     os.makedirs(args.output, exist_ok=True)
     
-    # Sélectionner les appartements
-    if args.apartment:
-        if args.apartment not in APARTMENTS:
-            print(f"[ERROR] Appartement inconnu : {args.apartment}")
-            return
-        apartments = {args.apartment: APARTMENTS[args.apartment]}
-    else:
-        apartments = APARTMENTS
-    
     print("=" * 50)
-    print("GÉNÉRATION DES DONNÉES CAPTEURS")
+    print("GÉNÉRATION DES DONNÉES CAPTEURS (MODE BATCH CSV)")
     print("=" * 50)
     print(f"Jours : {args.days}")
-    print(f"Nb Appartements : {len(apartments)}")
+    print(f"Appartements : {len(apartments)}")
     print("=" * 50)
     
-    start_date = datetime(2025, 12, 1)  # Un lundi
+    start_date = datetime(2025, 12, 1)  # Lundi
     
     for day in range(args.days):
         current_date = start_date + timedelta(days=day)
@@ -187,7 +190,7 @@ def main():
         
         print(f"\n[{date_str}] ({current_date.strftime('%A')})")
         
-        weather = generate_weather_for_day(current_date, WEATHER)
+        weather = generate_weather_for_day(current_date, WEATHER, args.interval)
         save_weather_csv(weather, current_date, f"{args.output}/weather_{date_str}.csv")
         
         for apt_id, apt_config in apartments.items():
@@ -196,6 +199,126 @@ def main():
     
     print("\n" + "=" * 50)
     print("[OK] Terminé !")
+
+
+def run_realtime_mode(args, apartments: dict):
+    """Mode temps réel : publie sur MQTT avec simulation temporelle."""
+    from producers import MQTTPublisher
+    
+    print("=" * 50)
+    print("GÉNÉRATION TEMPS RÉEL (MODE MQTT)")
+    print("=" * 50)
+    print(f"Broker MQTT : {args.mqtt_broker}:{args.mqtt_port}")
+    print(f"Appartements : {len(apartments)}")
+    print(f"Speed factor : {args.speed} (0=max speed)")
+    print("=" * 50)
+    
+    publisher = MQTTPublisher()
+    publisher.connect()
+    
+    # Calculer le délai réel entre deux lectures
+    # delay = intervalle_simulé / facteur_accélération
+    if args.speed == 0:
+        delay_seconds = 0
+    else:
+        delay_seconds = args.interval / args.speed
+    
+    print(f"Intervalle de lecture : {args.interval}s simulées ({args.interval//60}min)")
+    print(f"Délai entre envois : {delay_seconds:.2f}s réelles")
+    print("=" * 50)
+    print("\nDémarrage... (Ctrl+C pour arrêter)\n")
+    
+    room_states = {}
+    for apt_id, apt_config in apartments.items():
+        room_states[apt_id] = {}
+        for room in apt_config["rooms"]:
+            room_states[apt_id][room] = RoomState(apt_config, room)
+    
+    start_date = datetime(2025, 12, 1)
+    current_date = start_date
+    current_time_index = 0
+    message_count = 0
+    
+    try:
+        while True:
+            weather = generate_weather_for_day(current_date, WEATHER, args.interval)
+            w = weather[current_time_index]
+            hour, minute = w["hour"], w["minute"]
+            temp_ext, humidity_ext = w["temp_ext"], w["humidity_ext"]
+            
+            timestamp = current_date.replace(hour=hour, minute=minute, second=0)
+            day_of_week = current_date.weekday()
+            
+            # Publier météo
+            publisher.publish_weather({
+                "timestamp": timestamp.isoformat(),
+                "temperature": temp_ext,
+                "humidity": humidity_ext,
+            })
+            
+            # Traiter chaque appartement/pièce
+            for apt_id, apt_config in apartments.items():
+                for room_name in apt_config["rooms"]:
+                    state = room_states[apt_id][room_name]
+                    
+                    sensor_data = update_room_sensors(
+                        state, apt_config, room_name,
+                        hour, minute, day_of_week,
+                        temp_ext, humidity_ext
+                    )
+                    sensor_data["timestamp"] = timestamp.isoformat()
+                    sensor_data["apartment_id"] = apt_id
+                    
+                    publisher.publish_sensor_data(apt_id, room_name, sensor_data)
+                    message_count += 1
+            
+            if message_count % 50 == 0:
+                print(f"[{timestamp.isoformat()}] {message_count} messages publiés")
+            
+            current_time_index += 1
+            if current_time_index >= len(weather):
+                current_time_index = 0
+                current_date += timedelta(days=1)
+                print(f"\n--- Nouveau jour : {current_date.strftime('%Y-%m-%d')} ---\n")
+            
+            if delay_seconds > 0:
+                time.sleep(delay_seconds)
+                
+    except KeyboardInterrupt:
+        print(f"\n\n[OK] Arrêté. {message_count} messages publiés.")
+    finally:
+        publisher.disconnect()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Générateur de données capteurs IoT")
+    parser.add_argument("--mode", choices=["batch", "realtime"], default="batch", help="Mode de génération")
+    parser.add_argument("--days", type=int, default=1, help="Nombre de jours (batch)")
+    parser.add_argument("--apartment", type=str, default=None, help="Un seul appartement")
+    parser.add_argument("--output", type=str, default="output", help="Dossier de sortie CSV")
+    parser.add_argument("--mqtt-broker", type=str, default="localhost", help="Adresse broker MQTT")
+    parser.add_argument("--mqtt-port", type=int, default=1883, help="Port broker MQTT")
+    parser.add_argument("--interval", type=int, default=INTERVAL_10_MINS, help=f"Intervalle simulé entre lectures capteurs en secondes (défaut={INTERVAL_10_MINS}s soit {INTERVAL_10_MINS//60}min)")
+    parser.add_argument("--speed", type=int, default=None, help="Facteur d'accélération temps réel (défaut=interval pour 1sec réelle, 0=max speed)")
+    
+    args = parser.parse_args()
+    
+    # Si --speed n'est pas spécifié, utiliser --interval pour avoir 1 seconde réelle par défaut
+    if args.speed is None:
+        args.speed = args.interval
+    
+    if args.apartment:
+        if args.apartment not in APARTMENTS:
+            print(f"[ERROR] Appartement inconnu : {args.apartment}")
+            return
+        apartments = {args.apartment: APARTMENTS[args.apartment]}
+    else:
+        apartments = APARTMENTS
+    
+    if args.mode == "batch":
+        run_csv_batch_mode(args, apartments)
+    else:
+        run_realtime_mode(args, apartments)
 
 
 if __name__ == "__main__":

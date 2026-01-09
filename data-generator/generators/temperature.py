@@ -33,7 +33,7 @@ def update_temperature(
     Returns:
         Nouvelle température
     """
-    target_temp = temp_preference if presence else (temp_preference - 4)
+    target_temp = temp_preference if presence else (temp_preference - 6)
     target_temp += temp_offset
     
     # Effet soleil selon orientation
@@ -44,7 +44,7 @@ def update_temperature(
     elif orientation == "west" and 16 <= hour <= 20:
         target_temp += 1.0
     
-    new_temp = current_temp + (target_temp - current_temp) * 0.08
+    new_temp = current_temp + (target_temp - current_temp) * 0.15
     
     # Effet fenêtre ouverte
     if window_open:
