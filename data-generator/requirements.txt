@@ -1,0 +1,8 @@
+# Configuration YAML
+PyYAML>=6.0,<7.0
+
+# MQTT
+paho-mqtt>=2.0.0,<3.0.0
+
+# Gestion du temps
+pytz>=2023.3

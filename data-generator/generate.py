@@ -182,6 +182,7 @@ def run_csv_batch_mode(args, apartments: dict):
     print(f"Appartements : {len(apartments)}")
     print("=" * 50)
     
+    #TODO: améliorer pour commencer à maintenant si on veut
     start_date = datetime(2025, 12, 1)  # Lundi
     
     for day in range(args.days):
@@ -291,15 +292,23 @@ def run_realtime_mode(args, apartments: dict):
 
 
 def main():
+    # Valeurs par défaut depuis les variables d'environnement (pour Docker)
+    default_mode = os.getenv("MODE", "batch")
+    default_broker = os.getenv("MQTT_BROKER", "localhost")
+    default_port = int(os.getenv("MQTT_PORT", "1883"))
+    default_interval = int(os.getenv("INTERVAL", str(INTERVAL_10_MINS)))
+    default_speed = os.getenv("SPEED", None)
+    default_apartment = os.getenv("APARTMENT", None) or None
+    
     parser = argparse.ArgumentParser(description="Générateur de données capteurs IoT")
-    parser.add_argument("--mode", choices=["batch", "realtime"], default="batch", help="Mode de génération")
+    parser.add_argument("--mode", choices=["batch", "realtime"], default=default_mode, help="Mode de génération")
     parser.add_argument("--days", type=int, default=1, help="Nombre de jours (batch)")
-    parser.add_argument("--apartment", type=str, default=None, help="Un seul appartement")
+    parser.add_argument("--apartment", type=str, default=default_apartment, help="Un seul appartement")
     parser.add_argument("--output", type=str, default="output", help="Dossier de sortie CSV")
-    parser.add_argument("--mqtt-broker", type=str, default="localhost", help="Adresse broker MQTT")
-    parser.add_argument("--mqtt-port", type=int, default=1883, help="Port broker MQTT")
-    parser.add_argument("--interval", type=int, default=INTERVAL_10_MINS, help=f"Intervalle simulé entre lectures capteurs en secondes (défaut={INTERVAL_10_MINS}s soit {INTERVAL_10_MINS//60}min)")
-    parser.add_argument("--speed", type=int, default=None, help="Facteur d'accélération temps réel (défaut=interval pour 1sec réelle, 0=max speed)")
+    parser.add_argument("--mqtt-broker", type=str, default=default_broker, help="Adresse broker MQTT")
+    parser.add_argument("--mqtt-port", type=int, default=default_port, help="Port broker MQTT")
+    parser.add_argument("--interval", type=int, default=default_interval, help=f"Intervalle simulé entre lectures capteurs en secondes (défaut={INTERVAL_10_MINS}s soit {INTERVAL_10_MINS//60}min)")
+    parser.add_argument("--speed", type=int, default=int(default_speed) if default_speed else None, help="Facteur d'accélération temps réel (défaut=interval pour 1sec réelle, 0=max speed)")
     
     args = parser.parse_args()
     

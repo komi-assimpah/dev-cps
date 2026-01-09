@@ -1,2 +1,2 @@
-paho-mqtt==2.0
-kafka-python-ng==2.1
+paho-mqtt>=2.0.0,<3.0.0
+kafka-python-ng>=2.1.0
