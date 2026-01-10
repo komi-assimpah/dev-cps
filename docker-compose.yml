@@ -98,6 +98,7 @@ services:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana_json_exports:/var/lib/grafana/dashboards
+
   mosquitto:
     image: eclipse-mosquitto:2.0
     container_name: mosquitto
