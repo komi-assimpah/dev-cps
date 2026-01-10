@@ -2,6 +2,8 @@ import csv
 from datetime import datetime # , timezone
 import json
 import time
+import logging
+import os
 
 from confluent_kafka import Producer
 import paho.mqtt.client as mqtt
@@ -33,8 +35,13 @@ parser.add_argument('APT_ID',
 
 # ==== CONFIG PRODUCER KAFKA ====
 
+
+MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
+
 config = {
-  'bootstrap.servers': 'localhost:9092',
+  'bootstrap.servers': KAFKA_BROKER,
   'acks': 'all'
 }
 
@@ -73,32 +80,36 @@ def gen_list_of_sensor_data(column: int) -> list:
 
 def main():
   values = dict()
-  
+  logging.basicConfig(
+    level=logging.INFO,
+    format="[%(levelname)s] %(message)s"
+  )
+
   # nb_rooms = 0
 
   def on_message(client, userdata, message):
     nonlocal values #, nb_rooms
 
-    print(f"[INFO] {datetime.now()} Message reçu sur le topic {message.topic}")
+    logger.info(f"Message reçu sur le topic {message.topic}")
 
     room = message.topic.split('/')[2]
 
     data = json.loads(message.payload.decode('utf-8'))
     
     json_data = json_formatter.init_json(data["timestamp"])
-    print(f"[INFO] {datetime.now()} Nettoyage des données de la piece {room}")
+    logger.info(f"Nettoyage des données de la piece {room}")
     for i in DATA_TYPES:
       new_value = data[i]
 
       try:
         (new_value, old_value) = cleaner.median_filter(new_value, i, values[room][i])
-        print(f"[INFO] Filtre median appliqué pour : {i}")
-        if old_value != None: print(f"[INFO] Changement : {old_value} -> {new_value}")
+        logger.info(f"Filtre median appliqué pour : {i}")
+        if old_value != None: logger.warning(f"Changement : {old_value} -> {new_value}")
 
       except KeyError: # 1er passage, pas d'historique
         pass
       except Exception as e:
-        print(f"[ERROR] {e}")
+        logger.error(f"{e}")
       
       json_data[i] = new_value
 
@@ -119,10 +130,10 @@ def main():
 
     topic = f"APT_10{apt_id}_{room}"
     
-    print(final_json)
+    # print(final_json)
     producer.produce(topic, final_json, f"donnees_capteurs_APT_10{apt_id}")
     producer.flush()
-    print(f"[INFO] {datetime.now()} Donnees envoyees sur le topic {topic}")
+    logger.info(f"Donnees envoyees sur le topic {topic}")
     time.sleep(0.2)
 
       
@@ -132,7 +143,7 @@ def main():
   client = mqtt.Client()
   client.on_message = on_message
 
-  client.connect("localhost", 1883, 60)
+  client.connect(MQTT_BROKER, MQTT_PORT, 60)
 
   client.subscribe("building/APT_101/+/sensors")
 
@@ -140,10 +151,17 @@ def main():
 
 
 if __name__ == "__main__":
+  logger = logging.getLogger("Bridge MQTT-Kafka")
+
   args = parser.parse_args()
   apt_id = args.APT_ID
-
-  producer = Producer(config)
+  for attempt in range(1,11):
+    try:
+      producer = Producer(config)
+      logger.info(f" Connected to Kafka at {KAFKA_BROKER}")
+    except NoBrokersAvailable:
+      logger.warning(f"Kafka not ready, retry {attempt + 1}/{10}...")
+      time.sleep(2)
   topic = f"APT_10{apt_id}"
 
   file = None
