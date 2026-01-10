@@ -98,12 +98,52 @@ services:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana_json_exports:/var/lib/grafana/dashboards
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto-data:/mosquitto/data
+    networks:
+      - dev-cps-network
+
+  mqtt-kafka-bridge:
+    build: ./mqtt-kafka-bridge
+    container_name: mqtt_kafka_bridge
+    depends_on:
+      - mosquitto
+      - kafka
+    environment:
+      MQTT_BROKER: mosquitto
+      KAFKA_BROKER: kafka:29092
+    networks:
+      - dev-cps-network
+
+  data-generator:
+    build: ./data-generator
+    container_name: data_generator
+    depends_on:
+      - mosquitto
+    environment:
+      MQTT_BROKER: mosquitto
+      MQTT_PORT: 1883
+      MODE: realtime
+      INTERVAL: 600        # Intervalle de lecture capteurs (secondes simulées)
+      SPEED: 600           # Facteur d'accélération (600 = 10min simulées → 1sec réelle)
+      APARTMENT: ""        # Vide = tous les appartements, sinon ex: APT_101
+    networks:
+      - dev-cps-network
+    restart: unless-stopped
 
 volumes:
   mongodb-data:
   kafka-data:
   timescale_data:
   grafana_data:
+  mosquitto-data:
 
 
 networks:
