@@ -50,10 +50,11 @@ n2 = 0
 icone = -1
 
 class CLIENT_AIR_QUALITY:
-  def co2_score(co2_data):
+  def co2_score(self,co2_data):
+    if co2_data == None : return 0
+
     def f1(n0, n1, n2): return n1/(n0+n1+n2)
     def f2(n0, n1, n2): return n2/(n0+n1+n2)
-    
     global n0, n1, n2
     for i in range(len(co2_data)):
       if float(co2_data[i]) <= SEUIL_ACCEPTABLE_CO2: n0+=1
@@ -61,8 +62,9 @@ class CLIENT_AIR_QUALITY:
       else: n1+=1
     return round((2.5/numpy.log10(2))*(numpy.log10(1 + f1(n0,n1,n2)+3 * f2(n0,n1,n2))), 2)
   
-  def co_score(co_data, unit):
+  def co_score(self,co_data, unit):
     total = 0
+    if co_data == None : return 0
     for i in range(len(co_data)):
       if unit == 'ug/m3': data = co_data[i]/1145
       else: data = co_data[i]
@@ -75,8 +77,9 @@ class CLIENT_AIR_QUALITY:
     elif 50 < total <= 300: return 1
     else : return 0
   
-  def pm25_score(pm_data):
+  def pm25_score(self,pm_data):
     total=0
+    if pm_data == None : return 0
     for i in range(len(pm_data)):
       if pm_data[i]<=12: total+=0
       elif pm_data[i]<=35: total+=1
@@ -86,8 +89,9 @@ class CLIENT_AIR_QUALITY:
       else: total+=5
     return round(total/12,2)
 
-  def cov_score(cov_data):
+  def cov_score(self,cov_data):
     total=0
+    if cov_data == None : return 0
     for i in range(len(cov_data)):
       if cov_data[i]<=300: total+=0
       elif cov_data[i]<=1000: total+=1.25
@@ -98,7 +102,10 @@ class CLIENT_AIR_QUALITY:
   
   def IAQ(self, co2_data, co_data, unit, pm_data, cov_data):
     score = 0
+    nb_score = 4-[co2_data, co_data, pm_data, cov_data].count(None)
+    # print(nb_score)
     score += self.co2_score(co2_data)
     score += self.co_score(co_data, unit)
     score += self.pm25_score(pm_data)
     score += self.cov_score(cov_data)
+    return score/nb_score
