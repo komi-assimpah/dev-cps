@@ -11,6 +11,7 @@ from .humidity import update_humidity
 from .pm25 import update_pm25
 from .co import update_co, get_external_co
 from .cov import update_tvoc, get_external_tvoc
+from .energy import update_energy_consumption
 
 __all__ = [
     "generate_weather_for_day",
@@ -25,4 +26,6 @@ __all__ = [
     "get_external_co",
     "update_tvoc",
     "get_external_tvoc",
+    "update_energy_consumption",
 ]
+

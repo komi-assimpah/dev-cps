@@ -14,12 +14,25 @@ INTERVAL_15_MINS = 900
 INTERVAL_30_MINS = 1800
 INTERVAL_1_HOUR = 3600
 
+
+# =================== SURFACES ET CHAUFFAGE ===================
+ROOM_SURFACES = {
+    "studio": 16,
+    "salon": 18,
+    "cuisine": 8,
+    "chambre": 12,
+    "chambre_1": 12,
+    "chambre_2": 10,
+    "sdb": 4,
+}
+
 APARTMENTS = {
     # =================== ÉTAGE 1 ===================
     "APT_101": {
         "floor": 1,
         "orientation": "north",
         "type": "T3",
+        "surface": 60,
         "rooms": ["salon", "cuisine", "chambre_1", "chambre_2", "sdb"],
         "rooms_with_co2": ["salon", "cuisine"],
         "temp_offset": -1.0,
@@ -35,6 +48,7 @@ APARTMENTS = {
         "floor": 1,
         "orientation": "east",
         "type": "T2",
+        "surface": 45,
         "rooms": ["salon", "chambre", "cuisine", "sdb"],
         "rooms_with_co2": ["salon"],
         "temp_offset": +0.5,
@@ -50,6 +64,7 @@ APARTMENTS = {
         "floor": 1,
         "orientation": "south",
         "type": "T3",
+        "surface": 60,
         "rooms": ["salon", "cuisine", "chambre_1", "chambre_2", "sdb"],
         "rooms_with_co2": ["salon", "cuisine"],
         "temp_offset": +1.5,
@@ -65,6 +80,7 @@ APARTMENTS = {
         "floor": 1,
         "orientation": "west",
         "type": "Studio",
+        "surface": 20,
         "rooms": ["studio", "sdb"],
         "rooms_with_co2": ["studio"],
         "temp_offset": +0.8,
@@ -82,6 +98,7 @@ APARTMENTS = {
         "floor": 2,
         "orientation": "north",
         "type": "T2",
+        "surface": 45,
         "rooms": ["salon", "chambre", "cuisine", "sdb"],
         "rooms_with_co2": ["salon", "cuisine"],
         "temp_offset": -1.5,
@@ -97,6 +114,7 @@ APARTMENTS = {
         "floor": 2,
         "orientation": "east",
         "type": "Studio",
+        "surface": 20,
         "rooms": ["studio", "sdb"],
         "rooms_with_co2": ["studio"],
         "temp_offset": 0.0,
@@ -112,6 +130,7 @@ APARTMENTS = {
         "floor": 2,
         "orientation": "south",
         "type": "T3",
+        "surface": 60,
         "rooms": ["salon", "cuisine", "chambre_1", "chambre_2", "sdb"],
         "rooms_with_co2": ["salon", "cuisine"],
         "temp_offset": +1.0,
@@ -127,6 +146,7 @@ APARTMENTS = {
         "floor": 2,
         "orientation": "west",
         "type": "T2",
+        "surface": 45,
         "rooms": ["salon", "chambre", "cuisine", "sdb"],
         "rooms_with_co2": ["salon"],
         "temp_offset": +0.3,
