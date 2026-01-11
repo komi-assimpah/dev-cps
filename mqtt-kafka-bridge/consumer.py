@@ -5,7 +5,7 @@ import time
 import logging
 import os
 
-from confluent_kafka import Producer
+from confluent_kafka import Producer, KafkaError
 import paho.mqtt.client as mqtt
 
 from utils import cleaner
@@ -128,7 +128,7 @@ def main():
 
     final_json = json_formatter.convert_json(json_data)
 
-    topic = f"APT_10{apt_id}_{room}"
+    topic = f"APT_10{apt_id}.{room}"
     
     # print(final_json)
     producer.produce(topic, final_json, f"donnees_capteurs_APT_10{apt_id}")
@@ -159,8 +159,8 @@ if __name__ == "__main__":
     try:
       producer = Producer(config)
       logger.info(f" Connected to Kafka at {KAFKA_BROKER}")
-    except NoBrokersAvailable:
-      logger.warning(f"Kafka not ready, retry {attempt + 1}/{10}...")
+    except KafkaError.NoBrokersAvailable:
+      logger.warning(f"Kafka not ready, retry {attempt}/{10}...")
       time.sleep(2)
   topic = f"APT_10{apt_id}"
 
