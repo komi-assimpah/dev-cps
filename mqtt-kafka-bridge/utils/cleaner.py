@@ -42,7 +42,7 @@ def median_filter(new_data: float, data_type: str, hist: list, return_med_filt =
 
     elif len(history) < 20:
       thresh = THRESHOLDS[data_type]
-      if abs(new_data - history[-2]) > (thresh * 6):
+      if abs(new_data - history[-2]) > (thresh * 2):
         return (history[-2], new_data)
       else:
         return (new_data, None)
