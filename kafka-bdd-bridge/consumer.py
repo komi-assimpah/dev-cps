@@ -222,13 +222,23 @@ if __name__ == "__main__":
   while not_connected:
     try:
       c.subscribe(topics)
-      c.list_topics(timeout=2.0)
-      logger.info(f"Abonné avec succès aux topics : {topics}")
-      not_connected = False
+      # On récupère les métadonnées du cluster
+      cluster_metadata = c.list_topics(timeout=5.0)
+      
+      # On vérifie si TOUS nos topics sont connus du broker
+      topics_sur_broker = cluster_metadata.topics.keys()
+      manquants = [t for t in topics if t not in topics_sur_broker]
+      
+      if not manquants:
+        logger.info(f"Tous les topics sont validés sur le broker.")
+        not_connected = False
+      else:
+        logger.warning(f"Topics manquants sur le broker : {manquants}")
+        time.sleep(2)
+            
     except Exception as e:
-      logger.warning(f"Kafka n'est pas encore prêt : {e}")
-      logger.info(f"Nouvelle tentative dans 2 secondes...")
-      time.sleep(2)
+        logger.warning(f"Erreur lors de la vérification : {e}")
+        time.sleep(2)
   # c.subscribe(topic)
 
   # ======== CONFIG KAFKA ========
