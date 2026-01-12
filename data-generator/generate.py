@@ -23,8 +23,9 @@ import time
 from datetime import datetime, timedelta
 from typing import List
 
-from config import APARTMENTS, WEATHER, INITIAL_SENSOR_VALUES, INTERVAL_10_MINS
+from config import APARTMENTS, WEATHER, INTERVAL_10_MINS
 from anomaly_injector.anomalies import random_inject_anomaly
+from models import RoomState
 from generators import (
     generate_weather_for_day,
     get_external_pm25,
@@ -38,25 +39,10 @@ from generators import (
     update_pm25,
     update_co,
     update_tvoc,
+    update_energy_consumption,
 )
 
-# TODO: add energy consumption generation temperature dependent
-# TODO: fonction qui insert des données erronées (capteur HS, valeurs aberrantes...) pour tester la filtration et suivi dans les logs 
-#   ou les mettre dans les fichiers responsables de la génération de chaque données cpteurs 
 #TODO:ugmenter la frequence de lecture des capteurs critiques (CO2, PM25, CO, TVOC)
-
-class RoomState:
-    """État d'une pièce (valeurs courantes des capteurs)."""
-    
-    def __init__(self, apt_config: dict, room_name: str):
-        user = apt_config["user"]
-        self.temp = user["temp_preference"] - 1.5 + apt_config["temp_offset"]
-        self.co2 = INITIAL_SENSOR_VALUES["co2"]
-        self.humidity = INITIAL_SENSOR_VALUES["humidity"]
-        self.pm25 = INITIAL_SENSOR_VALUES["pm25"]
-        self.co = INITIAL_SENSOR_VALUES["co"]
-        self.tvoc = INITIAL_SENSOR_VALUES["tvoc"]
-        self.window_open = False
 
 
 def update_room_sensors(
@@ -67,7 +53,8 @@ def update_room_sensors(
     minute: int,
     day_of_week: int,
     temp_ext: float,
-    humidity_ext: float
+    humidity_ext: float,
+    interval_minutes: int = 10
 ) -> dict:
     """
     Met à jour l'état des capteurs d'une pièce et retourne les données.
@@ -82,9 +69,9 @@ def update_room_sensors(
     
     presence = is_user_home(hour, minute, day_of_week, user)
     state.window_open = window_is_opened(state.window_open, presence, state.co2, hour, state.temp, room_name)
-    
+    state.heater_on = presence and state.temp < temp_pref
     state.temp = update_temperature(
-        state.temp, temp_ext, state.window_open, presence,
+        state.temp, temp_ext, state.window_open, state.heater_on,
         temp_pref, temp_offset, heat_loss, orientation, hour
     )
     
@@ -93,6 +80,7 @@ def update_room_sensors(
     state.pm25 = update_pm25(state.pm25, get_external_pm25(hour), state.window_open, presence, room_name, hour)
     state.co = update_co(state.co, get_external_co(), state.window_open, presence, room_name, hour)
     state.tvoc = update_tvoc(state.tvoc, get_external_tvoc(), state.window_open, presence, room_name, hour)
+    state.energy_kwh = update_energy_consumption(state.energy_kwh, state.heater_on, room_name, interval_minutes)
     
     return {
         "room": room_name,
@@ -103,17 +91,20 @@ def update_room_sensors(
         "co": round(state.co, 3),
         "tvoc": round(state.tvoc, 2),
         "window_open": state.window_open,
+        "heater_on": state.heater_on,
         "presence": presence,
         "temp_ext": temp_ext,
         "humidity_ext": humidity_ext,
+        "energy_kwh": state.energy_kwh,
     }
 
 
-def generate_room_data(room_name: str, apt_config: dict, weather: List[dict], date: datetime) -> List[dict]:
+def generate_room_data(room_name: str, apt_config: dict, weather: List[dict], date: datetime, interval_seconds: int = 600) -> List[dict]:
     """Génère les données pour UNE pièce sur UNE journée (mode batch)."""
     state = RoomState(apt_config, room_name)
     data = []
     day_of_week = date.weekday()
+    interval_minutes = interval_seconds // 60
     
     for w in weather:
         hour, minute = w["hour"], w["minute"]
@@ -122,7 +113,8 @@ def generate_room_data(room_name: str, apt_config: dict, weather: List[dict], da
         sensor_data = update_room_sensors(
             state, apt_config, room_name,
             hour, minute, day_of_week,
-            w["temp_ext"], w["humidity_ext"]
+            w["temp_ext"], w["humidity_ext"],
+            interval_minutes
         )
         sensor_data["timestamp"] = timestamp.isoformat()
         data.append(sensor_data)
@@ -130,12 +122,12 @@ def generate_room_data(room_name: str, apt_config: dict, weather: List[dict], da
     return data
 
 
-def generate_apartment_data(apt_id: str, apt_config: dict, weather: List[dict], date: datetime) -> List[dict]:
+def generate_apartment_data(apt_id: str, apt_config: dict, weather: List[dict], date: datetime, interval_seconds: int = 600) -> List[dict]:
     """Génère les données pour un appartement sur une journée."""
     all_data = []
     
     for room in apt_config["rooms"]:
-        room_data = generate_room_data(room, apt_config, weather, date)
+        room_data = generate_room_data(room, apt_config, weather, date, interval_seconds)
         for row in room_data:
             row["apartment_id"] = apt_id
         all_data.extend(room_data)
@@ -148,8 +140,8 @@ def save_csv(data: List[dict], filename: str):
     if not data:
         return
     
-    fields = ["timestamp", "apartment_id", "room", "window_open", "presence", "temperature", "humidity",
-              "co2", "pm25", "co", "tvoc", "temp_ext", "humidity_ext"]
+    fields = ["timestamp", "apartment_id", "room", "window_open", "heater_on", "presence", "temperature", "humidity",
+              "co2", "pm25", "co", "tvoc", "temp_ext", "humidity_ext", "energy_kwh"]
     
     with open(filename, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
@@ -196,7 +188,7 @@ def run_csv_batch_mode(args, apartments: dict):
         save_weather_csv(weather, current_date, f"{args.output}/weather_{date_str}.csv")
         
         for apt_id, apt_config in apartments.items():
-            data = generate_apartment_data(apt_id, apt_config, weather, current_date)
+            data = generate_apartment_data(apt_id, apt_config, weather, current_date, args.interval)
             save_csv(data, f"{args.output}/{apt_id.lower()}_{date_str}.csv")
     
     print("\n" + "=" * 50)
@@ -267,7 +259,8 @@ def run_realtime_mode(args, apartments: dict):
                     sensor_data = update_room_sensors(
                         state, apt_config, room_name,
                         hour, minute, day_of_week,
-                        temp_ext, humidity_ext
+                        temp_ext, humidity_ext,
+                        args.interval // 60
                     )
                     sensor_data["timestamp"] = timestamp.isoformat()
                     sensor_data["apartment_id"] = apt_id
