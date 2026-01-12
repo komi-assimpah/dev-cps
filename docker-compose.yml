@@ -84,6 +84,8 @@ services:
     volumes:
       - timescale_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - dev-cps-network
 
   grafana:
     image: grafana/grafana:latest
@@ -98,6 +100,8 @@ services:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana_json_exports:/var/lib/grafana/dashboards
+    networks:
+      - dev-cps-network
 
   mosquitto:
     image: eclipse-mosquitto:2.0
@@ -120,6 +124,22 @@ services:
     environment:
       MQTT_BROKER: mosquitto
       KAFKA_BROKER: kafka:29092
+    networks:
+      - dev-cps-network
+  
+  kafka-bdd-bridge:
+    build: ./kafka-bdd-bridge
+    container_name: kafka_bdd_bridge
+    depends_on:
+      - kafka
+      - timescaledb
+    environment:
+      KAFKA_BROKER: kafka:29092
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      POSTGRES_USER: monuser
+      POSTGRES_PASSWORD: monpassword
+      POSTGRES_DB: sensor_scores
     networks:
       - dev-cps-network
 

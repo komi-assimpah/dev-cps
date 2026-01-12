@@ -5,7 +5,7 @@ import time
 import logging
 import os
 
-from confluent_kafka import Producer
+from confluent_kafka import Producer, KafkaError
 import paho.mqtt.client as mqtt
 
 from utils import cleaner
@@ -102,6 +102,7 @@ def main():
       new_value = data[i]
 
       try:
+        new_value = cleaner.clean_none_value(new_value, values[room][i])
         (new_value, old_value) = cleaner.median_filter(new_value, i, values[room][i])
         logger.info(f"Filtre median appliqué pour : {i}")
         if old_value != None: logger.warning(f"Changement : {old_value} -> {new_value}")
@@ -117,18 +118,18 @@ def main():
       # Sauvegarde de l'historique
       try:
         try: # En temps normal
-          values[room][i].append(data[i])
+          values[room][i].append(new_value)
           if len(values[room][i]) > HISTORY_MAX_DEPTH:
             values[room][i] = values[room][i][-HISTORY_MAX_DEPTH:]
         except: # Si l'historique de la data existe pas
-          values[room][i] = [data[i]]
+          values[room][i] = [new_value]
       except: # Si l'historique de piece existe pas
         values[room] = dict()
-        values[room][i] = [data[i]]
+        values[room][i] = [new_value]
 
     final_json = json_formatter.convert_json(json_data)
 
-    topic = f"APT_10{apt_id}_{room}"
+    topic = f"APT_10{apt_id}.{room}"
     
     # print(final_json)
     producer.produce(topic, final_json, f"donnees_capteurs_APT_10{apt_id}")
@@ -159,8 +160,8 @@ if __name__ == "__main__":
     try:
       producer = Producer(config)
       logger.info(f" Connected to Kafka at {KAFKA_BROKER}")
-    except NoBrokersAvailable:
-      logger.warning(f"Kafka not ready, retry {attempt + 1}/{10}...")
+    except Exception as e:
+      logger.warning(f"Kafka not ready, retry {attempt}/{10}...")
       time.sleep(2)
   topic = f"APT_10{apt_id}"
 
