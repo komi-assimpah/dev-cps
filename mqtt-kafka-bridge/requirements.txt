@@ -1,4 +1,4 @@
 paho-mqtt
-confluent-kafka
+kafka-python
 numpy
 scipy

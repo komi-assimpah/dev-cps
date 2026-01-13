@@ -30,7 +30,7 @@ parser.add_argument('APT_ID',
 # ======== CONFIG DES SERVICES ========
 
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
-DB_HOST = os.getenv("DB_HOST", "localhost")
+TIMESCALE_DB_HOST = os.getenv("TIMESCALE_DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "monuser")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "monpassword")
@@ -43,7 +43,7 @@ conf = {
 }
 
 db_params = {
-  "host": DB_HOST,
+  "host": TIMESCALE_DB_HOST,
   "port": DB_PORT,
   "database": POSTGRES_DB,
   "user": POSTGRES_USER,
@@ -167,6 +167,16 @@ def main():
         data_bytes = msg.value()
         data_str = data_bytes.decode('utf-8')
         data = json.loads(data_str)
+        
+        # Robustness: Convert string timestamp to int if needed
+        if isinstance(data.get("timestamp"), str):
+            try:
+                # Handle ISO format
+                ts = datetime.fromisoformat(data["timestamp"])
+                data["timestamp"] = int(ts.timestamp())
+            except Exception as e:
+                logger.warning(f"Failed to parse timestamp {data['timestamp']}: {e}")
+                continue # Skip bad data
 
         # tsmp = get_appropriate_tsmp(data["timestamp"])
 

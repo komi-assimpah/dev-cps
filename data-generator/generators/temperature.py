@@ -52,7 +52,10 @@ def update_temperature(
     
     # Pertes naturelles
     diff = external_temp - current_temp
-    new_temp += diff * 0.02 * heat_loss_factor
+    if heater_on: # Pertes faibles quand chauffage allume
+        new_temp += diff * 0.02 * heat_loss_factor
+    else: # Pertes plus fortes quand chauffage eteint (refroidissement naturel)
+        new_temp += diff * 0.06 * heat_loss_factor
     
     if window_open:
         diff = external_temp - current_temp
