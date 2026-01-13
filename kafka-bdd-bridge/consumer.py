@@ -1,5 +1,6 @@
 import json
 import calcul_scores.air_quality as IAQ
+import calcul_scores.isolation as IIT
 from confluent_kafka import Consumer, KafkaError
 import psycopg2
 import random
@@ -58,6 +59,7 @@ MAX_LEN_QUEUES = 12
 apt_id = 0
 
 client_iaq = IAQ.CLIENT_AIR_QUALITY()
+client_iit = IIT.CLIENT_ISOLATION_SCORE()
 
 timestamp_queue = list()
 temp_queue = list()
@@ -178,10 +180,11 @@ def main():
 
         for tstmp in avg_data.keys():
           if len(avg_data[tstmp]["co2"]) == 12:
+            iit_2h = client_iit.IIT_2h(3, 72, avg_data[tstmp]["temperature"])
             iaq_2h = client_iaq.IAQ(avg_data[tstmp]["co2"], avg_data[tstmp]["co"], "", avg_data[tstmp]["pm25"], avg_data[tstmp]["tvoc"])
             logger.info(f"Nouveau IAQ_2H calculé : {iaq_2h}")
             tstmp_to_remove.append(tstmp)
-            send_bdd(tstmp, float(iaq_2h), round(random.uniform(0.0,100.0),3))
+            send_bdd(tstmp, float(iaq_2h), float(iit_2h))
         
         for t in tstmp_to_remove:
           avg_data.pop(t)

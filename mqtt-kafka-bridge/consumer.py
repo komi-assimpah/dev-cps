@@ -95,6 +95,7 @@ def main():
     room = message.topic.split('/')[2]
 
     data = json.loads(message.payload.decode('utf-8'))
+    logger.info(f"Recu : {data}")
     
     json_data = json_formatter.init_json(data["timestamp"])
     logger.info(f"Nettoyage des données de la piece {room}")
