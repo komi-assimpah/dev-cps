@@ -5,6 +5,7 @@ en prod on utilisera des services externes comme OpenRouteService
 """
 
 from datetime import datetime
+# TODO: tester différents distances et temps pour la meilleure performance
 
 class GeolocationService:
     def __init__(self):

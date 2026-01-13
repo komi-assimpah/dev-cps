@@ -19,6 +19,7 @@ COPY . .
 
 ENV PYTHONPATH=/app
 
-CMD ["python", "consumer.py", "1"]
+COPY start.sh .
+RUN chmod +x start.sh
 
-CMD ["python", "mongoDB-consumer.py"]
+CMD ["./start.sh"]

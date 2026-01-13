@@ -260,17 +260,17 @@ def demo():
         }
         
         t_cible = service.preferences.get(sc["id"], 20.0)
-        print(f"   📍 Pos: {geo_payload['distance']} km (arrive dans {geo_payload['time']} min)")
-        print(f"   🏠 Appart: {sensor_payload['temp_actuelle']}°C (préference {t_cible}°C) | Ext: {sensor_payload['temp_ext']}°C")
+        print(f"    Position: {geo_payload['distance']} km (arrive dans {geo_payload['time']} min)")
+        print(f"    Appart: {sensor_payload['temp_actuelle']}°C (préference {t_cible}°C) | Ext: {sensor_payload['temp_ext']}°C")
         
         decision = service.process_location_signal(geo_payload, sensor_payload)
         
         if decision['action'] == "ERROR":
-            print(f"   ⚠️  ERREUR: {decision['reason']}")
+            print(f"      ERREUR: {decision['reason']}")
         else:
-            print(f"   ⏱️  Chauffe estimée: {decision['temps_chauffe_minutes']} min")
-            print(f"   🤖 DÉCISION: {decision['action']}")
-            print(f"   📝 Raison: {decision['reason']}")
+            print(f"      Chauffe estimée: {decision['temps_chauffe_minutes']} min")
+            print(f"      DÉCISION: {decision['action']}")
+            print(f"      Raison: {decision['reason']}")
 
 if __name__ == "__main__":
     import sys
