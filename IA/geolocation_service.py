@@ -1,6 +1,7 @@
 """
 Service de Géolocalisation.
 Responsabilité : Fournir les données de localisation (Distance/Temps) simulées ou réelles.
+en prod on utilisera des services externes comme OpenRouteService 
 """
 
 from datetime import datetime

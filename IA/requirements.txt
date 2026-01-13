@@ -1,3 +1,4 @@
 pandas
 xgboost
 scikit-learn
+kafka-python

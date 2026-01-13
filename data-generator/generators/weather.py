@@ -23,9 +23,7 @@ class WeatherProvider:
     def __init__(self):
         csv_path = Path(__file__).parent.parent / "dataset" / "open-meteo-43.69N7.19E17m.csv"
         try:
-            # Skip les 3 premieres lignes de metadonnees
             self._df = pd.read_csv(csv_path, skiprows=3)
-            # Renommer les colonnes pour simplifier
             self._df.columns = ["time", "temp", "humidity"]
             self._df["time"] = pd.to_datetime(self._df["time"])
             self._df = self._df.set_index("time")
@@ -81,11 +79,11 @@ class WeatherProvider:
                 temp = row_start["temp"] + (row_end["temp"] - row_start["temp"]) * ratio
                 hum = row_start["humidity"] + (row_end["humidity"] - row_start["humidity"]) * ratio
                 
-                return {"temp": temp, "humidity": hum}
+                return {"temp": float(temp), "humidity": float(hum)}
             elif ts_start in self._df.index:
                 # Fallback sur heure pile
                 row = self._df.loc[ts_start]
-                return {"temp": row["temp"], "humidity": row["humidity"]}
+                return {"temp": float(row["temp"]), "humidity": float(row["humidity"])}
                 
         except Exception:
             pass

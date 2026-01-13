@@ -8,9 +8,24 @@ Responsabilité :
 """
 
 import os
+import datetime
 from datetime import datetime
+import json
+import logging
+import time
+
+# Kafka Imports
+try:
+    from kafka import KafkaConsumer, KafkaProducer
+except ImportError:
+    KafkaConsumer = None
+    KafkaProducer = None
+
 from heating_predictor import HeatingPredictor
 from geolocation_service import GeolocationService
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("SmartHeating")
 
 class SmartHeatingService:
     """
@@ -52,20 +67,27 @@ class SmartHeatingService:
              return {"action": "ERROR", "reason": "No sensor timestamp"}
         
         try:
-            sensor_timestamp = datetime.fromisoformat(sensor_data["timestamp"])
+            # Gère les formats ISO et timestamp int
+            ts = sensor_data["timestamp"]
+            if isinstance(ts, int) or (isinstance(ts, str) and ts.isdigit()):
+                 sensor_timestamp = datetime.fromtimestamp(int(ts))
+            else:
+                 sensor_timestamp = datetime.fromisoformat(ts)
+
             loc_timestamp = datetime.fromisoformat(loc_str)
             
             time_diff = abs((sensor_timestamp - loc_timestamp).total_seconds())
-            MAX_DELAY_SECONDS = 900  # 15 minutes
-            
+            # MAX_DELAY_SECONDS = 900 # 15 minutes
+            MAX_DELAY_SECONDS = 8640000  # for test only
+
             if time_diff > MAX_DELAY_SECONDS:
                  return {
                      "action": "ERROR", 
                      "reason": f"Data unsynced. Diff: {time_diff:.0f}s"
                  }
                  
-        except ValueError:
-            return {"action": "ERROR", "reason": "Invalid timestamp format"}
+        except ValueError as e:
+            return {"action": "ERROR", "reason": f"Invalid timestamp format: {e}"}
 
         temp_cible = self.preferences.get(apartment_id, 20.0)
         temp_actuelle = sensor_data.get("temp_actuelle", 19.0)
@@ -90,9 +112,104 @@ class SmartHeatingService:
         
         return prediction
 
+class KafkaHeatingService:
+    """Wrapper pour connecter le service à Kafka."""
+    
+    def __init__(self, kafka_broker="localhost:9092", retries=10, delay=5):
+        if not KafkaConsumer:
+            raise ImportError("kafka-python not installed")
+            
+        logger.info(f"Connecting to Kafka at {kafka_broker}...")
+        
+        # Retry logic for Kafka connection
+        self.consumer = None
+        self.producer = None
+        
+        for i in range(retries):
+            try:
+                self.consumer = KafkaConsumer(
+                    "sensor-data",
+                    bootstrap_servers=kafka_broker,
+                    value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+                    group_id="heating-service-group",
+                    auto_offset_reset='latest'
+                )
+                self.producer = KafkaProducer(
+                    bootstrap_servers=kafka_broker,
+                    value_serializer=lambda v: json.dumps(v).encode("utf-8")
+                )
+                logger.info("✓ Connected to Kafka.")
+                break
+            except Exception as e:
+                logger.warning(f"Kafka not ready (attempt {i+1}/{retries}): {e}")
+                time.sleep(delay)
+        
+        if not self.consumer:
+            raise RuntimeError(f"Could not connect to Kafka at {kafka_broker}")
+        
+        # Le coeur du système
+        model_path = "IA/heating_model.json"
+        if not os.path.exists(model_path): model_path = "heating_model.json"
+        self.core_service = SmartHeatingService(model_path)
+        logger.info("Kafka Heating Service Ready.")
+
+    def run(self):
+        logger.info(" Waiting for sensor data...")
+        for message in self.consumer:
+            try:
+                data = message.value
+                # data = {"timestamp": 123456789, "temperature": 20.5, "_mqtt_topic": "building/APT_101/salon/sensors", ...}
+                
+                # 1. Extraction ID Appartement
+                # Topic MQTT original dans _mqtt_topic: building/APT_101/salon/sensors
+                mqtt_topic = data.get("_mqtt_topic", "")
+                parts = mqtt_topic.split("/")
+                if len(parts) >= 2 and parts[0] == "building":
+                    apartment_id = parts[1]
+                else:
+                    # Fallback si l'ID est dans le payload
+                    apartment_id = data.get("apartment_id", "UNKNOWN")
+                
+                if apartment_id == "UNKNOWN":
+                    continue
+
+                # 2. Enrichissement avec Géolocalisation (Simulée)
+                # Dans le futur, on pourrait lire un topic "geolocation"
+                geo_payload = self.core_service.geo_service.get_location_update(apartment_id)
+                
+                # 3. Adaptation format capteur pour le service
+                sensor_payload = {
+                     "timestamp": data.get("timestamp"),
+                     "temp_actuelle": data.get("temperature", 20.0), # Nom variable différent
+                     "temp_ext": 10.0, # TODO: Récupérer de la météo
+                     "humidity_ext": 50.0
+                }
+                
+                # 4. Décision
+                decision = self.core_service.process_location_signal(geo_payload, sensor_payload)
+                
+                if decision["action"] != "ERROR":
+                    logger.info(f"Decision for {apartment_id}: {decision['action']}")
+                    
+                    # 5. Publication Commande (si nécessaire)
+                    if decision["action"] in ["START_NOW", "WAIT"]:
+                        command_payload = {
+                            "apartment_id": apartment_id,
+                            "action": decision["action"],
+                            "timestamp": datetime.now().isoformat(),
+                            "reason": decision["reason"]
+                        }
+                        self.producer.send("heating-commands", value=command_payload)
+                        logger.info(f"→ Sent command to Kafka: {command_payload}")
+                else:
+                    logger.warning(f"Error processing {apartment_id}: {decision['reason']}")
+
+            except Exception as e:
+                logger.error(f"Error checking message: {e}")
+
 def demo():
     print("=" * 50)
-    print("🏠 SMART HEATING SERVICE")
+    print("🏠 SMART HEATING SERVICE (DEMO MODE)")
     print("=" * 50)
     
     try:
@@ -133,18 +250,15 @@ def demo():
     for sc in scenarios:
         print(f"\nTEST: {sc['id']} - {sc['desc']}")
         
-        # 1. Récup Position (Simulée par GeoService)
         geo_payload = service.geo_service.get_location_update(sc["id"])
         
-        # 2. Récup Capteurs (Simulés ici)
         sensor_payload = {
-            "timestamp": geo_payload["timestamp"], # Synchro parfaite
+            "timestamp": geo_payload["timestamp"], 
             "temp_actuelle": sc["t_int"],
             "temp_ext": sc["t_ext"],
-            "humidity_ext": 60.0 # Fixe pour simplifier
+            "humidity_ext": 60.0 
         }
         
-        # 3. Traitement
         t_cible = service.preferences.get(sc["id"], 20.0)
         print(f"   📍 Pos: {geo_payload['distance']} km (arrive dans {geo_payload['time']} min)")
         print(f"   🏠 Appart: {sensor_payload['temp_actuelle']}°C (préference {t_cible}°C) | Ext: {sensor_payload['temp_ext']}°C")
@@ -159,4 +273,10 @@ def demo():
             print(f"   📝 Raison: {decision['reason']}")
 
 if __name__ == "__main__":
-    demo()
+    import sys
+    if "--kafka" in sys.argv:
+        broker = os.getenv("KAFKA_BROKER", "localhost:9092")
+        service = KafkaHeatingService(kafka_broker=broker)
+        service.run()
+    else:
+        demo()

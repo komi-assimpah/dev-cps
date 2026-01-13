@@ -112,6 +112,7 @@ services:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana_json_exports:/var/lib/grafana/dashboards
+  
   mosquitto:
     image: eclipse-mosquitto:2.0
     container_name: mosquitto
@@ -135,6 +136,17 @@ services:
       KAFKA_BROKER: kafka:29092
     networks:
       - dev-cps-network
+
+  ml-service:
+    build: ./IA
+    container_name: ml_service
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_BROKER: kafka:29092
+    networks:
+      - dev-cps-network
+    restart: unless-stopped
 
   data-generator:
     build: ./data-generator

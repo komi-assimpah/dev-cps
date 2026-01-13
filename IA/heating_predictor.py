@@ -97,6 +97,7 @@ class HeatingPredictor:
         prediction = self.model.predict(features)[0]
         return max(0, float(prediction))
     
+    #TODO: remove default values
     def decide(self, eta_minutes: float, temp_actuelle: float,
                temp_cible: float, temp_ext: float, humidity_ext: float, hour: int,
                room: str = "salon", apartment_id: str = "APT_101",
