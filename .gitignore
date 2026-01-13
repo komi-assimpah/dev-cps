@@ -22,3 +22,5 @@ todo
 package-lock.json
 node_modules/
 */frames/*
+
+*/data/*
