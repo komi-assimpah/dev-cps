@@ -68,7 +68,7 @@ co2_queue = list()
 co_queue = list()
 pm25_queue = list()
 tvoc_queue = list()
-DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc"]
+DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc", "temp_ext", "energy_kwh"]
 
 # ======== SETUP VARIABLES ========
 
@@ -180,7 +180,7 @@ def main():
 
         for tstmp in avg_data.keys():
           if len(avg_data[tstmp]["co2"]) == 12:
-            iit_2h = client_iit.IIT_2h(3, 72, avg_data[tstmp]["temperature"])
+            iit_2h = client_iit.IIT_2h(avg_data[tstmp]["energy_kwh"], 60, avg_data[tstmp]["temperature"], avg_data[tstmp]["temp_ext"])
             iaq_2h = client_iaq.IAQ(avg_data[tstmp]["co2"], avg_data[tstmp]["co"], "", avg_data[tstmp]["pm25"], avg_data[tstmp]["tvoc"])
             logger.info(f"Nouveau IAQ_2H calculé : {iaq_2h}")
             tstmp_to_remove.append(tstmp)

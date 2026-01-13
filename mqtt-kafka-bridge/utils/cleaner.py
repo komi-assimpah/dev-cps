@@ -3,9 +3,10 @@ from scipy.signal import medfilt
 
 MAX_LEN_HISTORY = 50
 
-DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc"]
+DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc", "temp_ext"]
 VALID_SENSORS_RANGES = {
     "temperature": (-20, 50),    # °C - réaliste intérieur
+    "temp_ext": (-20, 50),
     "humidity": (0, 100),        # % - physique
     "co2": (300, 5000),          # ppm - min atmosphérique, max capteur
     "pm25": (0, 500),            # µg/m³ - max capteur
@@ -14,6 +15,7 @@ VALID_SENSORS_RANGES = {
 }
 THRESHOLDS = {
   "temperature": 3.0,    # Un saut de 3°C en 5s est physiquement quasi-impossible indoors
+  "temp_ext": (-20, 50),
   "humidity": 5.0,       # L'humidité peut varier vite (douche/cuisine), mais pas de 5% par seconde
   "co2": 250.0,          # Le CO2 monte vite avec l'occupation, mais 250ppm est une marge de bruit sûre
   "pm25": 50.0,          # Très volatil (fumée/cuisine), un seuil trop bas (10) créera trop d'alertes
@@ -29,6 +31,9 @@ def get_dynamic_threshold(history, k=5):
 def median_filter(new_data: float, data_type: str, hist: list, return_med_filt = False):
 # global last_values, nb_outliers
   history = hist
+
+  if (new_data == None) : return (None, None)
+
   try:
     start_idx = len(history)
     history.append(new_data)
@@ -36,13 +41,18 @@ def median_filter(new_data: float, data_type: str, hist: list, return_med_filt =
 
     # ==== filtre des valeurs initiales
 
-    if len(history) < 2 :
-      if new_data < min_limit or new_data > max_limit:
-        return None
 
-    elif len(history) < 20:
+    if len(history) == 1 :
+      if new_data < min_limit or new_data > max_limit:
+        return (None, new_data)
+      return (new_data, None)
+    
+    if new_data < min_limit or new_data > max_limit:
+      new_data = history[-2]
+
+    if len(history) < 20:
       thresh = THRESHOLDS[data_type]
-      if abs(new_data - history[-2]) > (thresh * 2):
+      if abs(new_data - history[-2]) > (thresh * 5):
         return (history[-2], new_data)
       else:
         return (new_data, None)
@@ -62,9 +72,13 @@ def median_filter(new_data: float, data_type: str, hist: list, return_med_filt =
 
       outliers = raw_new[outliers_detectes].tolist()
 
+      if not(outliers): return (new_data, None)
+      elif new_data == outliers[-1]: return (med_filtered[-1], outliers[0] if len(outliers) >0 else None)
+      else: return (new_data, None)
+
       # if len(outliers) > 0: print(f"[INFO] [{data_type}] Détection de {len(outliers)} outliers {outliers} dans {new_data}")
 
-      return (med_filtered[-1], outliers[0] if len(outliers) > 0 else None)
+      # return (med_filtered[-1], outliers[0] if len(outliers) > 0 else None)
     else:
       return (new_data, None)
   except Exception as e:

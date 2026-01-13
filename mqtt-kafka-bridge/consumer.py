@@ -52,8 +52,8 @@ config = {
 qt_data = 5
 
 HISTORY_MAX_DEPTH = 50
-DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc"]
-THRESHOLD_DATA_TYPE = [10.0, 10.0, 100.0, 10.0, 1.5, 1200.0]
+DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc", "temp_ext", "energy_kwh"]
+THRESHOLD_DATA_TYPE = [10.0, 10.0, 100.0, 10.0, 1.5, 1200.0, 10.0]
 
 history = dict()
 nb_outliers = dict()
@@ -101,17 +101,17 @@ def main():
     logger.info(f"Nettoyage des données de la piece {room}")
     for i in DATA_TYPES:
       new_value = data[i]
+      if i != "energy_kwh":
+        try:
+          new_value = cleaner.clean_none_value(new_value, values[room][i])
+          (new_value, old_value) = cleaner.median_filter(new_value, i, values[room][i])
+          logger.info(f"Filtre median appliqué pour : {i}")
+          if old_value != None: logger.warning(f"Changement : {old_value} -> {new_value}")
 
-      try:
-        new_value = cleaner.clean_none_value(new_value, values[room][i])
-        (new_value, old_value) = cleaner.median_filter(new_value, i, values[room][i])
-        logger.info(f"Filtre median appliqué pour : {i}")
-        if old_value != None: logger.warning(f"Changement : {old_value} -> {new_value}")
-
-      except KeyError: # 1er passage, pas d'historique
-        pass
-      except Exception as e:
-        logger.error(f"{e}")
+        except KeyError: # 1er passage, pas d'historique
+          pass
+        except Exception as e:
+          logger.error(f"{e}")
       
       json_data[i] = new_value
 
