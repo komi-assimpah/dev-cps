@@ -1,182 +1,162 @@
 """
-Service d'inférence pour le modèle de préchauffage.
+Service d'Orchestration "Smart Heating".
 
-Utilise le modèle XGBoost pour prédire le temps de chauffe
-et calcule les métriques dérivées (action, confort, énergie).
+Responsabilité :
+- Coordonner les informations de Géolocalisation et des capteurs
+- Utiliser le HeatingPredictor (IA) pour prendre la décision finale
+- Gérer la cohérence des données
 """
 
-import xgboost as xgb
-import pandas as pd
-import numpy as np
 import os
+from datetime import datetime
+from heating_predictor import HeatingPredictor
+from geolocation_service import GeolocationService
 
-class HeatingPredictor:
+class SmartHeatingService:
     """
-    Service de prédiction pour le préchauffage intelligent.
+    Orchestrateur global.
+    Utilise la Géolocalisation (pour savoir quand on arrive)
+    ET le HeatingPredictor (pour savoir combien de temps nécessaire pour atteindre la température cible).
     """
     
     def __init__(self, model_path: str = "heating_model.json"):
-        """Charge le modèle entraîné."""
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(
-                f"Modèle non trouvé: {model_path}. "
-                "Exécutez d'abord train_model.py"
-            )
+        self.predictor = HeatingPredictor(model_path)
+        self.geo_service = GeolocationService()
         
-        self.model = xgb.XGBRegressor()
-        self.model.load_model(model_path)
-        print(f"✓ Modèle chargé: {model_path}")
-        
-        # Mappings hardcodés (basés sur LabelEncoder par défaut trié)
-        # Idéalement, il faudrait charger les LabelEncoder sauvegardés
-        self.rooms_map = {
-            'chambre': 0, 'chambre_1': 1, 'chambre_2': 2, 
-            'cuisine': 3, 'salon': 4, 'sdb': 5
+        # Préférences simulées (en prod on les récupèrera de la BDD)
+        self.preferences = {
+            "APT_101": 24.0, 
+            "APT_102": 20.0, 
+            "APT_103": 20.5, 
+            "APT_104": 22.0,
+            "APT_201": 21.5, 
+            "APT_202": 23.0, 
+            "APT_203": 22.0, 
+            "APT_204": 20.5
         }
-        self.apt_map = {
-            f'APT_{101+i}': i for i in range(4)
-        }
-        self.apt_map.update({f'APT_{201+i}': 4+i for i in range(4)})
 
-    def prepare_features(self, temp_actuelle, temp_cible, temp_ext, humidity_ext, hour, room, apartment_id):
-        """Reconstruit les 17 features exactes du training."""
+    def process_location_signal(self, location_payload: dict, sensor_data: dict) -> dict:
+        required = ["apartment_id", "distance", "time", "timestamp"]
         
-        # 1. Variables de base
-        delta_temp = temp_cible - temp_actuelle
-        temp_preference = temp_cible  # Hypothèse pour la prédiction
+        for k in required:
+            if k not in location_payload:
+                return {"action": "ERROR", "reason": f"Missing key: {k}"}
         
-        # 2. Encodage
-        room_encoded = self.rooms_map.get(room, 0)
-        apt_encoded = self.apt_map.get(apartment_id, 0)
+        apartment_id = location_payload["apartment_id"]
+        eta_minutes = float(location_payload["time"])
+        distance_km = float(location_payload["distance"])
+        loc_str = location_payload["timestamp"]
         
-        # 3. Features temporelles
-        morning = 1 if 6 <= hour < 10 else 0
-        day = 1 if 10 <= hour < 17 else 0
-        evening = 1 if 17 <= hour < 22 else 0
+        # Vérification de la Synchro
+        if not sensor_data.get("timestamp"):
+             return {"action": "ERROR", "reason": "No sensor timestamp"}
         
-        # 4. Features dérivées
-        delta_squared = delta_temp ** 2
-        temp_diff_ext = temp_actuelle - temp_ext
-        heating_difficulty = delta_temp * (20 - temp_ext) / 10
-        target_gap = temp_preference - temp_actuelle
-        delta_x_hour = delta_temp * hour
-        ext_x_hour = temp_ext * hour
-        
-        # Ordre EXACT des colonnes dans train_model.py
-        features = [
-            delta_temp,         # 0
-            delta_squared,      # 1
-            temp_ext,           # 2
-            temp_actuelle,      # 3 (temp_start)
-            temp_preference,    # 4
-            humidity_ext,       # 5
-            hour,               # 6
-            room_encoded,       # 7
-            apt_encoded,        # 8
-            morning,            # 9
-            day,                # 10
-            evening,            # 11
-            temp_diff_ext,      # 12
-            heating_difficulty, # 13
-            target_gap,         # 14
-            delta_x_hour,       # 15
-            ext_x_hour          # 16
-        ]
-        
-        return np.array([features])
+        try:
+            sensor_timestamp = datetime.fromisoformat(sensor_data["timestamp"])
+            loc_timestamp = datetime.fromisoformat(loc_str)
+            
+            time_diff = abs((sensor_timestamp - loc_timestamp).total_seconds())
+            MAX_DELAY_SECONDS = 900  # 15 minutes
+            
+            if time_diff > MAX_DELAY_SECONDS:
+                 return {
+                     "action": "ERROR", 
+                     "reason": f"Data unsynced. Diff: {time_diff:.0f}s"
+                 }
+                 
+        except ValueError:
+            return {"action": "ERROR", "reason": "Invalid timestamp format"}
 
-    def predict_heating_time(self, temp_actuelle: float, temp_cible: float,
-                              temp_ext: float, humidity_ext: float, hour: int,
-                              room: str = "salon", apartment_id: str = "APT_101") -> float:
-        """
-        Prédit le temps de chauffe en minutes.
-        """
-        if temp_cible <= temp_actuelle:
-            return 0.0
-        
-        features = self.prepare_features(
-            temp_actuelle, temp_cible, temp_ext, humidity_ext, hour, room, apartment_id
-        )
-        
-        prediction = self.model.predict(features)[0]
-        return max(0, float(prediction))
+        temp_cible = self.preferences.get(apartment_id, 20.0)
+        temp_actuelle = sensor_data.get("temp_actuelle", 19.0)
+        temp_ext = sensor_data.get("temp_ext", 10.0)
+        humidity_ext = sensor_data.get("humidity_ext", 50.0)        
+        current_hour = sensor_timestamp.hour
     
-    def decide(self, eta_minutes: float, temp_actuelle: float,
-               temp_cible: float, temp_ext: float, humidity_ext: float, hour: int,
-               room: str = "salon", apartment_id: str = "APT_101",
-               puissance_kw: float = 1.8) -> dict:
-        """
-        Prend une décision complète de préchauffage.
-        """
-        temps_chauffe = self.predict_heating_time(
-            temp_actuelle, temp_cible, temp_ext, humidity_ext, hour, room, apartment_id
+        prediction = self.predictor.decide(
+            eta_minutes=eta_minutes,
+            temp_actuelle=temp_actuelle,
+            temp_cible=temp_cible,
+            temp_ext=temp_ext,
+            humidity_ext=humidity_ext,
+            hour=current_hour,
+            apartment_id=apartment_id
         )
         
-        # Marge de sécurité (ex: 10%)
-        temps_chauffe_safe = temps_chauffe * 1.1
-        
-        if temp_actuelle >= temp_cible:
-            action = "NO_ACTION"
-            reason = "Température atteinte"
-        elif eta_minutes <= temps_chauffe_safe:
-            action = "START_NOW"
-            reason = f"Arrivée dans {eta_minutes}min, chauffe estimée {temps_chauffe:.0f}min"
-        else:
-            action = "WAIT"
-            wait_time = eta_minutes - temps_chauffe_safe
-            reason = f"Attendre {wait_time:.0f} min"
-        
-        energie_kwh = puissance_kw * (temps_chauffe / 60)
-        
-        return {
-            "action": action,
-            "temps_chauffe_minutes": round(temps_chauffe, 1),
-            "energie_estimee_kwh": round(energie_kwh, 3),
-            "reason": reason
+        prediction["geo_info"] = {
+            "distance_km": distance_km,
+            "eta_minutes": eta_minutes
         }
-
+        
+        return prediction
 
 def demo():
     print("=" * 50)
-    print("TEST DU MODÈLE DE PRÉCHAUFFAGE (XGBoost)")
+    print("🏠 SMART HEATING SERVICE")
     print("=" * 50)
     
     try:
-        predictor = HeatingPredictor()
+        model_path = "IA/heating_model.json" 
+        if not os.path.exists(model_path):
+            model_path = "heating_model.json"
+            
+        service = SmartHeatingService(model_path=model_path)
     except Exception as e:
-        print(f"❌ Erreur: {e}")
+        print(f"❌ Erreur Init: {e}")
         return
-    
+        
+    print("\n" + "="*60)
+    print("📋 SCÉNARIOS DE TEST")
+    print("="*60)
+
     scenarios = [
-        # Cas 1: Hiver froid, matin, gros delta
-        {"eta": 60, "t_act": 17, "t_cible": 21, "t_ext": 5, "hum": 80, "h": 7, "desc": "Matin froid (17->21°C)"},
-        
-        # Cas 2: Soirée douce, petit delta
-        {"eta": 30, "t_act": 19.5, "t_cible": 21, "t_ext": 12, "hum": 60, "h": 18, "desc": "Soirée douce (19.5->21°C)"},
-        
-        # Cas 3: Retour we, apart froid
-        {"eta": 120, "t_act": 15, "t_cible": 21, "t_ext": 4, "hum": 70, "h": 19, "desc": "Retour WE froid (15->21°C)"},
-        
-        # Cas 4: Déjà chaud
-        {"eta": 15, "t_act": 21.5, "t_cible": 21, "t_ext": 10, "hum": 50, "h": 12, "desc": "Déjà chaud"},
+        {
+            "id": "APT_101", 
+            "desc": "Retour Boulot (Froid, Loin)", 
+            "t_int": 15.0, 
+            "t_ext": 5.0
+        },
+        {
+            "id": "APT_102", 
+            "desc": "Course Rapide (Proche, Presque chaud)", 
+            "t_int": 19.0, 
+            "t_ext": 10.0
+        },
+        {
+            "id": "APT_103", 
+            "desc": "Week-end (Très Loin, Très Froid)", 
+            "t_int": 12.0, 
+            "t_ext": 0.0
+        },
     ]
-    
-    for s in scenarios:
-        print(f"\n📍 {s['desc']}")
-        print(f"   Conditions: T_int={s['t_act']}°C, T_ext={s['t_ext']}°C, Hum={s['hum']}%, Heure={s['h']}h")
+
+    for sc in scenarios:
+        print(f"\nTEST: {sc['id']} - {sc['desc']}")
         
-        res = predictor.decide(
-            eta_minutes=s["eta"],
-            temp_actuelle=s["t_act"],
-            temp_cible=s["t_cible"],
-            temp_ext=s["t_ext"],
-            humidity_ext=s["hum"],
-            hour=s["h"]
-        )
+        # 1. Récup Position (Simulée par GeoService)
+        geo_payload = service.geo_service.get_location_update(sc["id"])
         
-        print(f"   � Action: {res['action']}")
-        print(f"   ⏱️  Prédiction: {res['temps_chauffe_minutes']} min")
-        print(f"   � {res['reason']}")
+        # 2. Récup Capteurs (Simulés ici)
+        sensor_payload = {
+            "timestamp": geo_payload["timestamp"], # Synchro parfaite
+            "temp_actuelle": sc["t_int"],
+            "temp_ext": sc["t_ext"],
+            "humidity_ext": 60.0 # Fixe pour simplifier
+        }
+        
+        # 3. Traitement
+        t_cible = service.preferences.get(sc["id"], 20.0)
+        print(f"   📍 Pos: {geo_payload['distance']} km (arrive dans {geo_payload['time']} min)")
+        print(f"   🏠 Appart: {sensor_payload['temp_actuelle']}°C (préference {t_cible}°C) | Ext: {sensor_payload['temp_ext']}°C")
+        
+        decision = service.process_location_signal(geo_payload, sensor_payload)
+        
+        if decision['action'] == "ERROR":
+            print(f"   ⚠️  ERREUR: {decision['reason']}")
+        else:
+            print(f"   ⏱️  Chauffe estimée: {decision['temps_chauffe_minutes']} min")
+            print(f"   🤖 DÉCISION: {decision['action']}")
+            print(f"   📝 Raison: {decision['reason']}")
 
 if __name__ == "__main__":
     demo()
