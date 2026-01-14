@@ -13,7 +13,7 @@ Fonctionnent pour un appartement et pourraient être déployés pour d'autres ap
 Le projet consiste à développer une solution de monitoring à domicile pour réguler le _confort_ de l'**utilisateur** (habitant de l'appartement) à travers différentes métriques _( température, qualité de l'air,... )_ et publier ces données pour que le **client** (gestionnaire d'immeuble) puisse suivre l'état de ses appartements et réaliser des travaux de rénovation.
 L'utilisateur pourrait aussi consulter ses propres données pour surveiller en temps réel l'état de son appartement.
 
-Reguler le confort consiste a optimiser les periodes de chauffe des chauffages, en prenant en compte les habitudes de l'utilisateur, et donner des recommandations basées sur la qualité de l'air et l'état d'ouverture/fermeture des fenêtres.
+Réguler le confort consiste à optimiser les périodes de chauffe des chauffages, en prenant en compte les habitudes de l'utilisateur, et donner des recommandations basées sur la qualité de l'air et l'état d'ouverture/fermeture des fenêtres.
 
 ## Chapitres
 
@@ -96,6 +96,19 @@ Quelques commandes pour intéragir avec la table :
 # Afficher le contenu de la table scores
 SELECT * FROM scores;
 ```
+
+##### Consulter les logs des conteneurs
+
+Les conteneurs affichent des logs pour exposer leurs résultats, leurs actions etc. Pour les consulter, 2 moyens :
+- Docker Desktop
+  - Cliquer sur n'importe quel nom de conteneur
+  - Aller dans la section "Logs"
+- Terminal
+  - Entrer la commande 
+  ```bash
+  # -f pour les afficher en temps réel
+  docker logs -f <nom_du_conteneur>
+  ```
 
 ## 2. Architecture
 
