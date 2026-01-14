@@ -10,7 +10,10 @@ L'objectif de ce POC est de montrer que les pipelines :
 
 Fonctionnent pour un appartement et pourraient être déployés pour d'autres appartements d'un même immeuble.
 
-Le projet consiste à développer une solution de monitoring à domicile pour réguler le confort de l'**utilisateur** (habitant de l'appartement) à travers différentes métriques _( température, qualité de l'air,... )_ et publier ces données pour que le **client** (gestionnaire d'immeuble) puisse suivre l'état de ses appartements et réaliser des travaux de rénovation.
+Le projet consiste à développer une solution de monitoring à domicile pour réguler le _confort_ de l'**utilisateur** (habitant de l'appartement) à travers différentes métriques _( température, qualité de l'air,... )_ et publier ces données pour que le **client** (gestionnaire d'immeuble) puisse suivre l'état de ses appartements et réaliser des travaux de rénovation.
+L'utilisateur pourrait aussi consulter ses propres données pour surveiller en temps réel l'état de son appartement.
+
+Reguler le confort consiste a optimiser les periodes de chauffe des chauffages, en prenant en compte les habitudes de l'utilisateur, et donner des recommandations basées sur la qualité de l'air et l'état d'ouverture/fermeture des fenêtres.
 
 ## Chapitres
 
