@@ -1,6 +1,6 @@
 # PROOF OF CONCEPT - PROJET DEV-CPS
 
-AUTHORS : KOMI ASSIMPAH Jean-Paul - FLANDIN François - MALMASSARY Louis
+AUTHORS : ASSIMPAH Komi Jean Paul - FLANDIN François - MALMASSARY Louis
 
 ## 1. Avant-propos
 
