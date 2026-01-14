@@ -199,11 +199,11 @@ if __name__ == "__main__":
   args = parser.parse_args()
   apt_id = args.APT_ID
 
-  logger = logging.getLogger("Bridge MQTT-Kafka")
+  logger = logging.getLogger("Kafka to Client score bridge")
 
   logging.basicConfig(
     level=logging.INFO,
-    format="[%(levelname)s] %(message)s"
+    format="[%(name)s] [%(levelname)s] %(message)s"
   )
 
   # ======== CONFIG KAFKA ========
@@ -219,7 +219,7 @@ if __name__ == "__main__":
   
   topics = list()
   for i in ["cuisine","salon","sdb","chambre_1","chambre_2"]:
-    topics.append(f"APT_10{apt_id}.{i}")
+    topics.append(f"APT_10{apt_id}.{i}.score_data")
   
   not_connected = True
   while not_connected:

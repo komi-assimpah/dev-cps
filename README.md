@@ -1,208 +1,86 @@
-# Dev-CPS — Pipeline IoT (Polytech Sophia)
+# PROOF OF CONCEPT - PROJET DEV-CPS
 
-Projet universitaire Polytech Sophia: pipeline d’ingestion et d’analytique de données IoT pour un immeuble d’appartements. Le flux va des capteurs (simulés) vers MQTT, Kafka, calcul de scores, stockage TimescaleDB, et visualisation Grafana pour deux profils d’utilisateurs: gérant et locataire.
+AUTHORS : KOMI ASSIMPAH Jean-Paul - FLANDIN François - MALMASSARY Louis
 
-## Aperçu
+## 1. Avant-propos
 
-- Génération réaliste de données capteurs par appartement/pièce (température, humidité, CO₂, PM2.5, CO, TVOC, présence, ouverture fenêtre, conso énergie)
-- Ingestion en temps réel via MQTT (Mosquitto)
-- Bridge MQTT → Kafka avec nettoyage (valeurs nulles, filtre médian/outliers)
-- Consumer Kafka → TimescaleDB avec calculs d’indicateurs (IAQ_2H, IIT_2H)
-- Visualisation des scores et séries via Grafana (datasource provisionnée)
-- Kafka UI pour observer les topics/partitions
+L'objectif de ce POC est de montrer que les pipelines :
+- de l'appartement au service utilisateur (modele ia et stockage local) 
+- de l'appartement au service client (calcul de scores et monitoring) 
 
-```
-[Capteurs simulés]
-	 └─ data-generator → MQTT (building/APT_xxx/<room>/sensors)
-		│
-		└─ mqtt-kafka-bridge → Kafka (APT_10x.<room>)
-			│
-			└─ kafka-bdd-bridge → TimescaleDB (scores)
-			    │
-			    └─ Grafana (dashboards)
-```
+Fonctionnent pour un appartement et pourraient être déployés pour d'autres appartements d'un même immeuble.
 
-## Démarrage rapide
+## 2. Comment utiliser ce POC
 
-Prérequis: Docker et Docker Compose.
+Tout d'abord, il faudra installer `docker` et `docker compose`
 
-1) Lancer l’ensemble des services
-
+Ensuite, le système entier peut etre demarré et utilisé avec une simple commande
 ```bash
 docker compose up -d
 ```
 
-Cela démarre: Mosquitto, Kafka (KRaft), Kafka UI, TimescaleDB (avec init SQL), Grafana, mqtt-kafka-bridge, kafka-bdd-bridge, data-generator (mode temps réel par défaut).
+Le premier demarrage devrait prendre un peu de temps
 
-2) Accès utiles
 
-- Kafka UI: http://localhost:8080
-- Grafana: http://localhost:3000 (admin/admin par défaut)
-- PostgreSQL/TimescaleDB: localhost:5432
+### 2.1 Endpoints
 
-3) Vérifier les données
+mais fini par exposer plusieurs endpoints, utiles pour comprendre ce qu'il se passe :
 
-- Topics MQTT publiés: `building/APT_101/+/sensors` (et autres APT_xxx si configurés)
-- Topics Kafka consommés: `APT_10x.<room>` (ex: `APT_101.salon` → côté bridge le nom final suit `APT_10{ID}`)
-- Table Timescale `scores` alimentée périodiquement par le consumer Kafka
+[localhost:8081](http://localhost:8081/) - MongoDB
+Permet de voir le contenu des collections MongoDB, la collection qui nous interesse ici est : `iot_building/sensor_apt_101`
+- il faudra entrer des credentials
+  - username : admin
+  - password : pass
 
-4) Interagir avec la base (via le conteneur TimescaleDB)
+[localhost:3000](http://localhost:3000/) - Grafana
+Permet d'acceder a grafana, le monitoring client, qui permet d'observer l'evolution des scores de qualité de l'air et d'isolation thermique
+- pour entrer dans grafana :
+  - username : admin
+  - password : admin
+- pour ajouter la base de donnees `timescaleDB` au dahsboard
+  - aller dans `connections > datasources > TimescaleDB`
+    - dans `Authentication > password` et entrer `monpassword`
+    - cliquer sur Save & test
+      - Si le cadre devient vert, tout est bon
+      - Sinon recliquer sur Save & test
 
-```bash
-docker exec -it mon-timescale psql -U monuser -d sensor_scores
-```
+[localhost:8080](http://localhost:8080/) - KafkaUI
+Permet d'acceder aux topics Kafka et leurs contenus
 
-Dans `psql`:
-
-```
-\dt                  -- lister les tables
-SELECT * FROM scores ORDER BY time DESC LIMIT 20;
-```
-
-## Composants
-
-- data-generator/ — Génère des données synthétiques réalistes
-	- Mode batch (CSV) et temps réel (MQTT)
-	- Publie sur `building/{apartment_id}/{room}/sensors` et `building/weather`
-	- Paramètres via variables d’env ou CLI: `MODE`, `INTERVAL`, `SPEED`, `APARTMENT`, `MQTT_BROKER`
-- mqtt-kafka-bridge/ — Abonne aux topics MQTT et publie sur Kafka
-	- Nettoyage: remplacement des `None`, filtre médian (`scipy.signal.medfilt`), seuils dynamiques
-	- Mapping topics: MQTT `building/APT_101/+/sensors` → Kafka `APT_10{APT_ID}.{room}`
-- kafka-bdd-bridge/ — Calcule les indicateurs et écrit en BDD
-	- IAQ_2H (qualité d’air) et IIT_2H (isolation) calculés sur fenêtres glissantes
-	- Insertion dans TimescaleDB(table `scores`) avec clé `(time, appart_id)`
-- grafana/ — Provision des datasources et dashboards
-	- Datasource Postgres/Timescale préconfigurée
-	- Dashboards chargés depuis `grafana_json_exports/`
-- kafka-ui — Interface d’observation Kafka (topics, partitions)
-- timescaledb — Stockage séries temporelles + hypertable `scores`
-- mosquitto — Broker MQTT
-
-## Données & scores
-
-- Capteurs: `temperature (°C)`, `humidity (%)`, `co2 (ppm)`, `pm25 (µg/m³)`, `co (ppm)`, `tvoc (µg/m³)`
-- Nettoyage (bridge MQTT→Kafka):
-	- Valeurs nulles remplacées par dernière valeur connue
-	- Filtre médian (fenêtre 5) + seuil dynamique via MAD pour outliers
-- Agrégation (consumer Kafka):
-	- Moyennes par timestamp après 5 échantillons/variable
-	- Calcul IAQ_2H: scores CO₂/CO/PM2.5/TVOC avec coefficients dépendants des niveaux
-	- Calcul IIT_2H: `conso_elec / (temp_moyenne * surface)`
-
-Schéma BDD (TimescaleDB)
-
-- Table `appartement(id, etage, orientation, surface)`
-- Table `scores(time timestamptz, appart_id int, IAQ_2H double, IIT_2H double)`
-- `scores` est une hypertable partitionnée sur `time`
-
-## Configuration & variables
-
-Extraits de `docker-compose.yml`:
-
-- Kafka (KRaft), ports: 9092 (host), 29092 (inter-containers)
-- TimescaleDB: cred `monuser/monpassword`, DB `sensor_scores`
-- Grafana: provision `grafana/datasources`, dashboards `grafana_json_exports`
-- data-generator:
-	- `MODE=realtime`, `INTERVAL=600`, `SPEED=600` (→ 10min simulées = 1s réelle)
-	- `APARTMENT=""` pour tous, sinon ex: `APT_101`
-- mqtt-kafka-bridge:
-	- `MQTT_BROKER=mosquitto`, `KAFKA_BROKER=kafka:29092`
-- kafka-bdd-bridge:
-	- `KAFKA_BROKER=kafka:29092`, `DB_HOST=timescaledb`, `POSTGRES_*`
-
-## Utilisation avancée
-
-- Générateur en mode CSV
-
-```bash
-cd data-generator
-python generate.py --days 7
-python generate.py --apartment APT_101 --days 1
-```
-
-- Générateur en mode temps réel (local hors Docker)
-
-```bash
-cd data-generator
-python generate.py --mode realtime --mqtt-broker localhost --mqtt-port 1883 --interval 600 --speed 600
-```
-
-- Bridge MQTT→Kafka (local)
-
-```bash
-cd mqtt-kafka-bridge
-python3 consumer.py 1  # APT_101
-```
-
-- Consumer Kafka→BDD (local)
-
-```bash
-cd kafka-bdd-bridge
-python3 consumer.py 1  # APT_101
-```
-
-- Kafka: lister/créer/supprimer topics (outil CLI)
-
-```bash
-python3 services/kafka-configuration/topicgen.py --list
-python3 services/kafka-configuration/topicgen.py MyTopic --partitions 3 --replication 1
-python3 services/kafka-configuration/topicgen.py --delete MyTopic
-```
-
-## Visualisation Grafana
-
-- Datasource par défaut: TimescaleDB (proxy vers `timescaledb:5432`)
-- Dashboards importés depuis `grafana_json_exports/`
-- Exemple de requête (explorateur Grafana):
-
-```sql
-SELECT time, IAQ_2H, IIT_2H FROM scores WHERE appart_id = 1 ORDER BY time DESC LIMIT 200;
-```
-
-## Dépannage
-
-- Kafka non prêt: attendre que le healthcheck passe, voir Kafka UI
-- Aucun message consommé:
-	- Vérifier que data-generator publie bien (logs du conteneur)
-	- Vérifier les topics dans Kafka UI (`APT_10x.<room>`) et correspondance MQTT
-- BDD vide:
-	- Vérifier `kafka-bdd-bridge` logs et la connexion `timescaledb`
-- Grafana sans données:
-	- Vérifier la datasource (statut), puis lancer une requête simple
-
-## Développement
-
-- Dépendances Python par composant (`requirements.txt` dans chaque dossier)
-- Lancement en local recommandé via venv; ou utiliser Docker Compose
-- Logs: consulter `docker logs <service>` pour diagnostiquer
-
-## Notes
-
-- Projet académique, non destiné à la production (auto-création topics Kafka, creds en clair)
-- Les seuils/nettoyages sont paramétrables dans `mqtt-kafka-bridge/utils` et `data-generator/generators`
-
-***
-
-Anciennes commandes utiles:
-
-- Consommer un topic Kafka pour un appartement
-
-```bash
-python3 consumer.py APT_ID
-# exemple pour APT_101
-python3 consumer.py 1
-```
-
-- Interagir avec la BDD dans un terminal
+### 2.2 Intéragir avec la Base de Données TimescaleDB
 
 ```bash
 docker exec -it mon-timescale psql -U monuser -d sensor_scores
 ```
 
-Dans `psql`:
-
-```
+Afficher les tables
+```bash
 \dt
 ```
 
-On peut exécuter n'importe quelle requête SQL (terminer par `;`).
+Afficher le contenu de la table `scores`
+```sql
+SELECT * FROM scores;
+```
+
+## 3. Architecture
+
+![Schéma de l'architecture de ce POC](architecture.png)
+
+### 3.1 Explication des composants
+
+#### Data Generator
+
+Génération réaliste de données capteurs par appartement/pièce (température, humidité, CO₂, PM2.5, CO, TVOC, présence, ouverture fenêtre, conso énergie)
+
+Envoie les donnees dans deux topics : `building/{apt}/{room}/sensors`
+
+#### Cleaners (pour scores & pour user)
+
+Recoivent les donnees du topic `building/{apt}/{room}/sensors`, et nettoient les données avec ce pipeline :
+- Nettoyage des valeurs nulles (répète la donnée précédente)
+- Vérifie que la donnée est bien comprise dans l'intervale de mesure du capteur (répète la donnée précédente)
+- Applique ensuite un filtre médian pour filtrer les outliers
+
+Le consumer pour le score regroupe et traite les donnees utiles pour le consumer kafka de calcul de score, puis les publie sur le topic kafka `<apt>.<room>.score_data`
+Le consumer pour le user regroupe et traite les donnees supplementaires inutiles pour le consumer kafka de calcul de score, puis les publie sur le topic kafka `<apt>.<room>.extra_data`

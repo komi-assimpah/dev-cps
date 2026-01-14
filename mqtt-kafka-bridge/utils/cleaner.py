@@ -3,11 +3,12 @@ from scipy.signal import medfilt
 
 MAX_LEN_HISTORY = 50
 
-DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc", "temp_ext"]
+DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc", "temp_ext", "humidity_ext"]
 VALID_SENSORS_RANGES = {
     "temperature": (-20, 50),    # °C - réaliste intérieur
     "temp_ext": (-20, 50),
     "humidity": (0, 100),        # % - physique
+    "humidity_ext": (0, 100),        # % - physique
     "co2": (300, 5000),          # ppm - min atmosphérique, max capteur
     "pm25": (0, 500),            # µg/m³ - max capteur
     "co": (0, 100),              # ppm - max sécurité
@@ -15,8 +16,9 @@ VALID_SENSORS_RANGES = {
 }
 THRESHOLDS = {
   "temperature": 3.0,    # Un saut de 3°C en 5s est physiquement quasi-impossible indoors
-  "temp_ext": (-20, 50),
+  "temp_ext": 3.0,
   "humidity": 5.0,       # L'humidité peut varier vite (douche/cuisine), mais pas de 5% par seconde
+  "humidity_ext": 5.0,        # % - physique
   "co2": 250.0,          # Le CO2 monte vite avec l'occupation, mais 250ppm est une marge de bruit sûre
   "pm25": 50.0,          # Très volatil (fumée/cuisine), un seuil trop bas (10) créera trop d'alertes
   "co": 2.0,             # Le CO doit être stable près de 0. Un saut de 2ppm est déjà suspect
@@ -31,6 +33,8 @@ def get_dynamic_threshold(history, k=5):
 def median_filter(new_data: float, data_type: str, hist: list, return_med_filt = False):
 # global last_values, nb_outliers
   history = hist
+
+  if (data_type not in DATA_TYPES) : return (new_data, None)
 
   if (new_data == None) : return (None, None)
 

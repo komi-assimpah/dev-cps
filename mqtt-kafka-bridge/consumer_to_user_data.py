@@ -35,6 +35,7 @@ parser.add_argument('APT_ID',
 
 # ==== CONFIG PRODUCER KAFKA ====
 
+# 'room': 'temperature' humidity''co2''pm25''co':'tvoc''window_open'heater_on''presence''temp_ext''humidity_ext''energy_kwh''timestamp'apartment_id'
 
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
@@ -52,8 +53,7 @@ config = {
 qt_data = 5
 
 HISTORY_MAX_DEPTH = 50
-DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc", "temp_ext", "energy_kwh"]
-THRESHOLD_DATA_TYPE = [10.0, 10.0, 100.0, 10.0, 1.5, 1200.0, 10.0]
+DATA_TYPES = ["window_open", "heater_on", "presence", "humidity_ext"]
 
 history = dict()
 nb_outliers = dict()
@@ -85,8 +85,6 @@ def main():
     format="[%(levelname)s] %(message)s"
   )
 
-  # nb_rooms = 0
-
   def on_message(client, userdata, message):
     nonlocal values #, nb_rooms
 
@@ -101,17 +99,16 @@ def main():
     logger.info(f"Nettoyage des données de la piece {room}")
     for i in DATA_TYPES:
       new_value = data[i]
-      if i != "energy_kwh":
-        try:
-          new_value = cleaner.clean_none_value(new_value, values[room][i])
-          (new_value, old_value) = cleaner.median_filter(new_value, i, values[room][i])
-          logger.info(f"Filtre median appliqué pour : {i}")
-          if old_value != None: logger.warning(f"Changement : {old_value} -> {new_value}")
+      try:
+        new_value = cleaner.clean_none_value(new_value, values[room][i])
+        (new_value, old_value) = cleaner.median_filter(new_value, i, values[room][i])
+        logger.info(f"Filtre median appliqué pour : {i}")
+        if old_value != None: logger.warning(f"Changement : {old_value} -> {new_value}")
 
-        except KeyError: # 1er passage, pas d'historique
-          pass
-        except Exception as e:
-          logger.error(f"{e}")
+      except KeyError: # 1er passage, pas d'historique
+        pass
+      except Exception as e:
+        logger.error(f"{e}")
       
       json_data[i] = new_value
 
@@ -128,9 +125,10 @@ def main():
         values[room] = dict()
         values[room][i] = [new_value]
 
+    json_data["temp_preference"] = 24 # hard codé faudra qu'on voie pour rendre ca modulaire
     final_json = json_formatter.convert_json(json_data)
 
-    topic = f"APT_10{apt_id}.{room}"
+    topic = f"APT_10{apt_id}.{room}.extra_data"
     
     # print(final_json)
     producer.produce(topic, final_json, f"donnees_capteurs_APT_10{apt_id}")
@@ -153,8 +151,11 @@ def main():
 
 
 if __name__ == "__main__":
-  logger = logging.getLogger("Bridge MQTT-Kafka")
-
+  logger = logging.getLogger("Bridge MQTT-Kafka 2")
+  logging.basicConfig(
+    level = logging.INFO,
+    format = '[%(name)s] [%(levelname)s] %(message)s'
+  )
   args = parser.parse_args()
   apt_id = args.APT_ID
   for attempt in range(1,11):

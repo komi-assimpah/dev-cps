@@ -9,6 +9,19 @@ services:
     networks:
       - dev-cps-network
 
+  mongo-express: # for dev purpose 
+  #credentials: admin/pass
+    image: mongo-express
+    container_name: mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017
+    depends_on:
+      - mongodb
+    networks:
+      - dev-cps-network
+
   # KAFKA - Broker unique avec KRaft
   kafka:
     image: confluentinc/cp-kafka:7.5.0  
@@ -140,6 +153,8 @@ services:
       POSTGRES_USER: monuser
       POSTGRES_PASSWORD: monpassword
       POSTGRES_DB: sensor_scores
+      MONGO_URI: mongodb://mongodb:27017
+      MONGO_DATABASE: iot_building
     networks:
       - dev-cps-network
 

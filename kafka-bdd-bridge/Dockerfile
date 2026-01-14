@@ -16,4 +16,10 @@ COPY . .
 
 ENV PYTHONPATH=/app
 
-CMD ["python", "consumer.py", "1"]
+COPY start_kafka_bdd_bridge.sh .
+RUN chmod +x start_kafka_bdd_bridge.sh
+
+CMD ["./start_kafka_bdd_bridge.sh"]
+
+# CMD ["python", "consumer_to_score_computation.py", "1"]
+# CMD ["python", "consumer_to_user_storage.py", "1"]
