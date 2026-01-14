@@ -67,7 +67,11 @@ Permet d'acceder a grafana, le monitoring client, qui permet d'observer l'evolut
     - dans `Authentication > password` et entrer `monpassword`
     - cliquer sur Save & test
       - Si le cadre devient vert, tout est bon
-      - Sinon recliquer sur Save & test
+      - Sinon, si l'erreur `Datasource has already been updated by someone else. Please reload and try again` apparaît, recliquer sur Save & test
+- pour consulter le DashBoard
+  - Cliquer sur `DashBoards > Immeuble-1`
+  - Cliquer sur le bouton _"Zoom to data"_ si le message `Data outside time range`
+  - Soit rafraîchir manuellement, soit attendre le renouvellement automatique
 
 [localhost:8080](http://localhost:8080/) - KafkaUI
 Permet d'accéder aux topics Kafka et leurs contenus
