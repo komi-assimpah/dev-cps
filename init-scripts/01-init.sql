@@ -18,8 +18,8 @@ CREATE TABLE scores (
 
 SELECT create_hypertable('scores', 'time', if_not_exists => TRUE);
 CREATE INDEX IF NOT EXISTS ix_scores_appart_time ON scores (appart_id, time DESC);
-INSERT INTO appartement (etage, orientation, surface) VALUES (0, 'Ouest', 255);
-INSERT INTO appartement (etage, orientation, surface) VALUES (0, 'Nord', 125);
+INSERT INTO appartement (etage, orientation, surface) VALUES (0, 'Ouest', 60);
+INSERT INTO appartement (etage, orientation, surface) VALUES (0, 'Nord', 45);
 
 -- pour les tests, devra degager par pitié
 -- INSERT INTO scores (time, appart_id, IAQ_2H, IIT_2H) VALUES (to_timestamp(1766962800), 1, 0.4, 100.0);

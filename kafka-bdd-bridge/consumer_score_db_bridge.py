@@ -30,7 +30,7 @@ parser.add_argument('APT_ID',
 # ======== CONFIG DES SERVICES ========
 
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
-TIMESCALE_DB_HOST = os.getenv("TIMESCALE_DB_HOST", "localhost")
+DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "monuser")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "monpassword")
@@ -43,7 +43,7 @@ conf = {
 }
 
 db_params = {
-  "host": TIMESCALE_DB_HOST,
+  "host": DB_HOST,
   "port": DB_PORT,
   "database": POSTGRES_DB,
   "user": POSTGRES_USER,
@@ -68,7 +68,7 @@ co2_queue = list()
 co_queue = list()
 pm25_queue = list()
 tvoc_queue = list()
-DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc"]
+DATA_TYPES = ["temperature", "humidity", "co2", "pm25", "co", "tvoc", "temp_ext", "energy_kwh"]
 
 # ======== SETUP VARIABLES ========
 
@@ -167,16 +167,6 @@ def main():
         data_bytes = msg.value()
         data_str = data_bytes.decode('utf-8')
         data = json.loads(data_str)
-        
-        # Robustness: Convert string timestamp to int if needed
-        if isinstance(data.get("timestamp"), str):
-            try:
-                # Handle ISO format
-                ts = datetime.fromisoformat(data["timestamp"])
-                data["timestamp"] = int(ts.timestamp())
-            except Exception as e:
-                logger.warning(f"Failed to parse timestamp {data['timestamp']}: {e}")
-                continue # Skip bad data
 
         # tsmp = get_appropriate_tsmp(data["timestamp"])
 
@@ -190,7 +180,7 @@ def main():
 
         for tstmp in avg_data.keys():
           if len(avg_data[tstmp]["co2"]) == 12:
-            iit_2h = client_iit.IIT_2h(3, 72, avg_data[tstmp]["temperature"])
+            iit_2h = client_iit.IIT_2h(avg_data[tstmp]["energy_kwh"], 60, avg_data[tstmp]["temperature"], avg_data[tstmp]["temp_ext"])
             iaq_2h = client_iaq.IAQ(avg_data[tstmp]["co2"], avg_data[tstmp]["co"], "", avg_data[tstmp]["pm25"], avg_data[tstmp]["tvoc"])
             logger.info(f"Nouveau IAQ_2H calculé : {iaq_2h}")
             tstmp_to_remove.append(tstmp)
@@ -209,11 +199,11 @@ if __name__ == "__main__":
   args = parser.parse_args()
   apt_id = args.APT_ID
 
-  logger = logging.getLogger("Bridge MQTT-Kafka")
+  logger = logging.getLogger("Kafka to Client score bridge")
 
   logging.basicConfig(
     level=logging.INFO,
-    format="[%(levelname)s] %(message)s"
+    format="[%(name)s] [%(levelname)s] %(message)s"
   )
 
   # ======== CONFIG KAFKA ========
@@ -229,7 +219,7 @@ if __name__ == "__main__":
   
   topics = list()
   for i in ["cuisine","salon","sdb","chambre_1","chambre_2"]:
-    topics.append(f"APT_10{apt_id}.{i}")
+    topics.append(f"APT_10{apt_id}.{i}.score_data")
   
   not_connected = True
   while not_connected:

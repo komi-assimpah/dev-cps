@@ -1,0 +1,15 @@
+# Traitement d'images et visualisation spatiale
+opencv-python>=4.7.0,<5.0.0
+numpy>=2.0.0
+
+# Configuration YAML
+PyYAML>=6.0,<7.0
+
+# Visualisation et graphiques
+matplotlib>=3.7.0,<4.0.0
+
+# Gestion du temps
+pytz>=2023.3
+
+# MQTT
+paho-mqtt>=2.0.0,<3.0.0

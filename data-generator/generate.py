@@ -96,7 +96,6 @@ def update_room_sensors(
         "temp_ext": temp_ext,
         "humidity_ext": humidity_ext,
         "energy_kwh": state.energy_kwh,
-        "temp_preference": temp_pref,
     }
 
 
@@ -142,7 +141,7 @@ def save_csv(data: List[dict], filename: str):
         return
     
     fields = ["timestamp", "apartment_id", "room", "window_open", "heater_on", "presence", "temperature", "humidity",
-              "co2", "pm25", "co", "tvoc", "temp_ext", "humidity_ext", "energy_kwh", "temp_preference"]
+              "co2", "pm25", "co", "tvoc", "temp_ext", "humidity_ext", "energy_kwh"]
     
     with open(filename, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
@@ -176,7 +175,8 @@ def run_csv_batch_mode(args, apartments: dict):
     print(f"Appartements : {len(apartments)}")
     print("=" * 50)
     
-    start_date = datetime(2024, 11, 1)  # Aligné sur le CSV météo
+    #TODO: améliorer pour commencer à maintenant si on veut
+    start_date = datetime(2025, 12, 1)  # Lundi
     
     for day in range(args.days):
         current_date = start_date + timedelta(days=day)

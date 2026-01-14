@@ -85,7 +85,6 @@ services:
       - dev-cps-network
 
   timescaledb:
-  #TODO: check is it is used
     image: timescale/timescaledb:latest-pg15
     container_name: mon-timescale
     restart: always
@@ -106,9 +105,9 @@ services:
     container_name: mon-grafana
     restart: always
     ports:
-      - "3000:3000"
+      - "3000:3000"  # Accès via localhost:3000
     depends_on:
-      - timescaledb
+      - timescaledb  # Attend que la DB soit lancée
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/datasources:/etc/grafana/provisioning/datasources
@@ -141,18 +140,23 @@ services:
     networks:
       - dev-cps-network
   
-
-
-  ml-service:
-    build: ./IA
-    container_name: ml_service
+  kafka-bdd-bridge:
+    build: ./kafka-bdd-bridge
+    container_name: kafka_bdd_bridge
     depends_on:
       - kafka
+      - timescaledb
     environment:
       KAFKA_BROKER: kafka:29092
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      POSTGRES_USER: monuser
+      POSTGRES_PASSWORD: monpassword
+      POSTGRES_DB: sensor_scores
+      MONGO_URI: mongodb://mongodb:27017
+      MONGO_DATABASE: iot_building
     networks:
       - dev-cps-network
-    restart: unless-stopped
 
   data-generator:
     build: ./data-generator
@@ -166,27 +170,6 @@ services:
       INTERVAL: 600        # Intervalle de lecture capteurs (secondes simulées)
       SPEED: 600           # Facteur d'accélération (600 = 10min simulées → 1sec réelle)
       APARTMENT: ""        # Vide = tous les appartements, sinon ex: APT_101
-    networks:
-      - dev-cps-network
-    restart: unless-stopped
-
-  kafka-bdd-bridge:
-    build: ./kafka-bdd-bridge
-    container_name: kafka_bdd_bridge
-    depends_on:
-      - kafka
-      - timescaledb
-      - mongodb
-    environment:
-      KAFKA_BROKER: kafka:29092
-      TIMESCALE_DB_HOST: timescaledb
-      DB_PORT: 5432
-      POSTGRES_USER: monuser
-      POSTGRES_PASSWORD: monpassword
-      POSTGRES_DB: sensor_scores
-      MONGO_URI: mongodb://mongodb:27017
-      MONGO_DATABASE: iot_building
-      KAFKA_TOPIC: sensor-data
     networks:
       - dev-cps-network
     restart: unless-stopped

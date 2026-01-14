@@ -6,9 +6,11 @@ def isolation_score(conso_elec: float, surface: int, avg_temp: float):
   return conso_elec/(avg_temp*surface)
 
 class CLIENT_ISOLATION_SCORE:
-  def IIT_2h(self, conso_elec: float, surface: int, temp: list):
+  def IIT_2h(self, conso_elec: float, surface: int, temp: list, temp_ext: list):
+    avg_conso = statistics.mean(conso_elec)
     avg_temp = statistics.mean(temp)
-    return conso_elec/(avg_temp*surface)
+    avg_temp_ext = statistics.mean(temp_ext)
+    return round(1000*(avg_conso/((avg_temp - avg_temp_ext)*surface)),2)
     # values = list()
     # for i in avg_temp:
       # values.append(isolation_score(conso_elec, surface, i))
