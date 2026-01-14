@@ -151,7 +151,12 @@ def main():
 
 
 if __name__ == "__main__":
-  logger = logging.getLogger("Bridge MQTT-Kafka 1")
+  logger = logging.getLogger("Bridge MQTT-Kafka Score")
+
+  logging.basicConfig(
+    level=logging.INFO,
+    format="[%(name)s] [%(levelname)s] %(message)s"
+  )
 
   args = parser.parse_args()
   apt_id = args.APT_ID

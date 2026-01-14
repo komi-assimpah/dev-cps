@@ -151,7 +151,7 @@ def main():
 
 
 if __name__ == "__main__":
-  logger = logging.getLogger("Bridge MQTT-Kafka 2")
+  logger = logging.getLogger("Bridge MQTT-Kafka User")
   logging.basicConfig(
     level = logging.INFO,
     format = '[%(name)s] [%(levelname)s] %(message)s'

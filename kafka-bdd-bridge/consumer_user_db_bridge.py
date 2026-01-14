@@ -45,7 +45,7 @@ logging.basicConfig(
   level=logging.INFO,
   format="[%(name)s] [%(levelname)s] %(message)s"
 )
-logger = logging.getLogger("Kafka to User bridge")
+logger = logging.getLogger("Kafka to MongoDB bridge")
 
 
 # ======== CONNEXION MONGODB ========
