@@ -1,8 +1,8 @@
 # PROOF OF CONCEPT - PROJET DEV-CPS
 
-AUTHORS : KOMI ASSIMPAH Jean-Paul - FLANDIN François - MALMASSARY Louis
+AUTHORS : ASSIMPAH Komi Jean Paul - FLANDIN François - MALMASSARY Louis
 
-## Avant-propos
+## 1. Avant-propos
 
 L'objectif de ce POC est de montrer que les pipelines :
 - de l'appartement au service utilisateur (modele ia et stockage local) 
