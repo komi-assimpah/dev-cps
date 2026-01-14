@@ -12,6 +12,7 @@ Fonctionnent pour un appartement et pourraient être déployés pour d'autres ap
 
 ## 2. Comment utiliser ce POC
 
+<<<<<<< HEAD
 ### Prérequis
 
 Assurez-vous d'avoir installé les outils suivants sur votre machine :
