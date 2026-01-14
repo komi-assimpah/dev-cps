@@ -182,7 +182,8 @@ def main():
           if len(avg_data[tstmp]["co2"]) == 12:
             iit_2h = client_iit.IIT_2h(avg_data[tstmp]["energy_kwh"], 60, avg_data[tstmp]["temperature"], avg_data[tstmp]["temp_ext"])
             iaq_2h = client_iaq.IAQ(avg_data[tstmp]["co2"], avg_data[tstmp]["co"], "", avg_data[tstmp]["pm25"], avg_data[tstmp]["tvoc"])
-            logger.info(f"Nouveau IAQ_2H calculé : {iaq_2h}")
+            logger.info(f"Nouvel IAQ_2H calculé : {iaq_2h}")
+            logger.info(f"Nouvel IIT calculé : {iit_2h}")
             tstmp_to_remove.append(tstmp)
             send_bdd(tstmp, float(iaq_2h), float(iit_2h))
         
