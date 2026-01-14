@@ -12,14 +12,32 @@ Fonctionnent pour un appartement et pourraient être déployés pour d'autres ap
 
 ## 2. Comment utiliser ce POC
 
-Tout d'abord, il faudra installer `docker` et `docker compose`
+### Prérequis
 
-Ensuite, le système entier peut etre demarré et utilisé avec une simple commande
+Assurez-vous d'avoir installé les outils suivants sur votre machine :
+- [Docker](https://www.docker.com/get-started/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+### Installation
+
+1. Clonez le dépôt Git :
+  ```bash
+  git clone https://github.com/komi-assimpah/dev-cps.git
+  ```
+
+2. Accédez au répertoire du projet :
+  ```bash
+  cd dev-cps
+  ```
+
+### Démarrage
+
+Pour démarrer le système, exécutez la commande suivante :
 ```bash
 docker compose up -d
 ```
 
-Le premier demarrage devrait prendre un peu de temps
+> **Remarque :** Le premier démarrage peut prendre un certain temps, car les images Docker nécessaires seront téléchargées.
 
 
 ### 2.1 Endpoints
