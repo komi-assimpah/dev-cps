@@ -2,7 +2,7 @@
 
 AUTHORS : KOMI ASSIMPAH Jean-Paul - FLANDIN François - MALMASSARY Louis
 
-## 1. Avant-propos
+## Avant-propos
 
 L'objectif de ce POC est de montrer que les pipelines :
 - de l'appartement au service utilisateur (modele ia et stockage local) 
@@ -10,9 +10,15 @@ L'objectif de ce POC est de montrer que les pipelines :
 
 Fonctionnent pour un appartement et pourraient être déployés pour d'autres appartements d'un même immeuble.
 
-## 2. Comment utiliser ce POC
+Le projet consiste à développer une solution de monitoring à domicile pour réguler le confort de l'**utilisateur** (habitant de l'appartement) à travers différentes métriques _( température, qualité de l'air,... )_ et publier ces données pour que le **client** (gestionnaire d'immeuble) puisse suivre l'état de ses appartements et réaliser des travaux de rénovation.
 
-<<<<<<< HEAD
+## Chapitres
+
+1. [Utilisation du POC](#1-comment-utiliser-ce-poc)
+2. [Explication de l'architecture](#2-architecture)
+
+## 1. Comment utiliser ce POC
+
 ### Prérequis
 
 Assurez-vous d'avoir installé les outils suivants sur votre machine :
@@ -41,7 +47,7 @@ docker compose up -d
 > **Remarque :** Le premier démarrage peut prendre un certain temps, car les images Docker nécessaires seront téléchargées.
 
 
-### 2.1 Endpoints
+### Endpoints
 
 mais fini par exposer plusieurs endpoints, utiles pour comprendre ce qu'il se passe :
 
@@ -64,35 +70,37 @@ Permet d'acceder a grafana, le monitoring client, qui permet d'observer l'evolut
       - Sinon recliquer sur Save & test
 
 [localhost:8080](http://localhost:8080/) - KafkaUI
-Permet d'acceder aux topics Kafka et leurs contenus
+Permet d'accéder aux topics Kafka et leurs contenus
+- Cliquer sur le bouton en haut à gauche, puis `Topics > <nom_du_topic> > Messages`
 
-### 2.2 Intéragir avec la Base de Données TimescaleDB
+##### Intéragir avec la Base de Données TimescaleDB
+
+Une fois le docker démarré, executer la commande suivante : 
 
 ```bash
 docker exec -it mon-timescale psql -U monuser -d sensor_scores
 ```
 
-Afficher les tables
-```bash
-\dt
-```
-
-Afficher le contenu de la table `scores`
+Quelques commandes pour intéragir avec la table :
 ```sql
+# Afficher les tables
+\dt
+
+# Afficher le contenu de la table scores
 SELECT * FROM scores;
 ```
 
-## 3. Architecture
+## 2. Architecture
 
 ![Schéma de l'architecture de ce POC](architecture.png)
 
-### 3.1 Explication des composants
+### Les Producers et Consumers
 
 #### Data Generator
 
 Génération réaliste de données capteurs par appartement/pièce (température, humidité, CO₂, PM2.5, CO, TVOC, présence, ouverture fenêtre, conso énergie)
 
-Envoie les donnees dans deux topics : `building/{apt}/{room}/sensors`
+Envoie les données dans deux topics : `building/{apt}/{room}/sensors`
 
 #### Cleaners (pour scores & pour user) - Consumer MQTT / Producer Kafka
 
@@ -120,3 +128,47 @@ Puis envoie ces scores dans la base de données TimescaleDB pour le monitoring
 #### Consumer Kafka - Stockage Client - Bridge Kafka / MongoDB
 
 S'abonne aux topics `<apt_id>.<room>.score_data` ainsi que `<apt_id>.<room>.extra_data`, regroupe les données et les envoie sur MongoDB
+
+#### Consumer Kafka - Modèle IA 
+
+S'abonne aux topics `<apt_id>.<room>.score_data` ainsi que `<apt_id>.<room>.extra_data`, et récupère la position gps de l'utilisateur, il calcule le temps que l'utilisateur devrait mettre pour rentrer et définit une durée de chauffe et une température. Il nécessite encore beaucoup de travail, vous pouvez le tester ainsi : 
+
+1. Créer puis activer un environnement virtuel python
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+2. Installer les packages requis
+```bash
+pip -r requirements.txt
+```
+
+3. Démarrer ensuite la version de démonstration
+```bash
+python3 heating_service.py
+```
+
+### Les brokers
+
+#### MQTT
+
+Sert de passerelle entre les données de l'appartement et les consumer nettoyant les données.
+
+#### Kafka
+
+Sert de passerelle entre MQTT et les différents services essentiels à notre projet, le nombre de topics du broker est 2 fois le nombre de pièces, on limitera donc la partition de chaque topic a 200Mo pour éviter que les queues prennent une taille gigantesque.
+
+### Bases de données & Monitoring
+
+#### TimescaleDB et Grafana
+
+Installée dans le fog de l'immeuble, elle stocke les données du client (scores qualité de l'air, isolation thermique), on utilise une base de données TimescaleDB, on y enregistre deux tables :
+- Appartements : qui contient l'identifiant de l'appartement, sa surface et son orientation (Nord, Sud, Est, Ouest)
+- Scores : qui contient le timestamp, l'identifiant de l'appartement, le score de qualité de l'air (IAQ), et le score d'isolation thermique
+
+Ces données sont ensuite lues dans grafana pour monitorer la situation des appartements.
+
+#### MongoDB
+
+Unique à chaque utilisateur, elle sert à stocker les données de l'utilisateur, qui seront affichées sur son interface pour que l'utilisateur puisse prendre connaissance de la situation à l'intérieur de son appartement, l'interface utilisateur n'a pas été développée, mais les données sont consultables sur le endpoint MongoDB.
