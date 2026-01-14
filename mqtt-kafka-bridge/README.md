@@ -1,10 +1,11 @@
-# Bridge MQTT KAFKA
+# Bridges MQTT KAFKA
 
-Recupere les infos de l'appartement, s'abonne aux topics MQTT
-```
-building/APT_10x/<room>/sensors
-```
-Nettoie ensuite les data, enleve les valeurs nulles, et applique un filtre median pour retirer les outliers, puis les publies sur les topics Kafka
-```
-APT_10x/<room>
-```
+## Cleaners (pour scores & pour user) - Consumer MQTT / Producer Kafka
+
+Recoivent les donnees du topic `building/{apt}/{room}/sensors`, et nettoient les données avec ce pipeline :
+- Nettoyage des valeurs nulles (répète la donnée précédente)
+- Vérifie que la donnée est bien comprise dans l'intervale de mesure du capteur (répète la donnée précédente)
+- Applique ensuite un filtre médian pour filtrer les outliers
+
+Le consumer pour le score regroupe et traite les donnees utiles pour le consumer kafka de calcul de score, puis les publie sur le topic kafka `<apt>.<room>.score_data`
+Le consumer pour le user regroupe et traite les donnees supplementaires inutiles pour le consumer kafka de calcul de score, puis les publie sur le topic kafka `<apt>.<room>.extra_data`
