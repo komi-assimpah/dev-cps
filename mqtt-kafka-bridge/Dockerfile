@@ -4,6 +4,7 @@ FROM python:3.12-slim
 RUN apt-get update && apt-get install -y \
     build-essential \
     librdkafka-dev \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -17,7 +18,7 @@ COPY . .
 ENV PYTHONPATH=/app
 
 COPY start_mqtt_kafka_bridge.sh .
-RUN chmod +x start_mqtt_kafka_bridge.sh
+RUN dos2unix start_mqtt_kafka_bridge.sh && chmod +x start_mqtt_kafka_bridge.sh
 
 CMD ["./start_mqtt_kafka_bridge.sh"]
 

@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     librdkafka-dev \
     gcc \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -18,6 +19,6 @@ COPY . .
 ENV PYTHONPATH=/app
 
 COPY start_kafka_bdd_bridge.sh .
-RUN chmod +x start_kafka_bdd_bridge.sh
+RUN dos2unix start_kafka_bdd_bridge.sh && chmod +x start_kafka_bdd_bridge.sh
 
 CMD ["./start_kafka_bdd_bridge.sh"]
